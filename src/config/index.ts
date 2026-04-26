@@ -18,9 +18,23 @@ export interface AutoMergeConfig {
   min_confidence: Confidence;
 }
 
+export type CodeIndexLanguage = "ts" | "tsx" | "js" | "py";
+
+export interface CodeIndexConfig {
+  enabled: boolean;
+  languages?: CodeIndexLanguage[];
+  max_file_kb: number;
+}
+
 export interface ApexConfig {
   auto_merge: AutoMergeConfig;
+  codeindex?: CodeIndexConfig;
 }
+
+const CODEINDEX_DEFAULTS: CodeIndexConfig = {
+  enabled: false,
+  max_file_kb: 2000,
+};
 
 const DEFAULTS: ApexConfig = {
   auto_merge: {
@@ -35,6 +49,10 @@ export function getDefaults(): ApexConfig {
   return {
     auto_merge: { ...DEFAULTS.auto_merge },
   };
+}
+
+export function getCodeIndexConfig(config: ApexConfig): CodeIndexConfig {
+  return config.codeindex ?? { ...CODEINDEX_DEFAULTS };
 }
 
 /**
@@ -75,6 +93,30 @@ export async function loadConfig(root: string): Promise<ApexConfig> {
     ? (rawAm["min_confidence"] as Confidence)
     : defaults.auto_merge.min_confidence;
 
+  let codeindex: CodeIndexConfig | undefined;
+  if (raw["codeindex"] !== undefined) {
+    const rawCi = (raw["codeindex"] ?? {}) as Record<string, unknown>;
+    const ciEnabled =
+      typeof rawCi["enabled"] === "boolean" ? rawCi["enabled"] : CODEINDEX_DEFAULTS.enabled;
+    const ciMaxFileKb =
+      typeof rawCi["max_file_kb"] === "number" && rawCi["max_file_kb"] > 0
+        ? rawCi["max_file_kb"]
+        : CODEINDEX_DEFAULTS.max_file_kb;
+    const allowedLangs: CodeIndexLanguage[] = ["ts", "tsx", "js", "py"];
+    let ciLanguages: CodeIndexLanguage[] | undefined;
+    if (Array.isArray(rawCi["languages"])) {
+      const filtered = (rawCi["languages"] as unknown[]).filter((v): v is CodeIndexLanguage =>
+        typeof v === "string" && (allowedLangs as string[]).includes(v),
+      );
+      if (filtered.length > 0) ciLanguages = filtered;
+    }
+    codeindex = {
+      enabled: ciEnabled,
+      max_file_kb: ciMaxFileKb,
+      ...(ciLanguages ? { languages: ciLanguages } : {}),
+    };
+  }
+
   return {
     auto_merge: {
       enabled,
@@ -82,6 +124,7 @@ export async function loadConfig(root: string): Promise<ApexConfig> {
       require_no_conflict,
       min_confidence,
     },
+    ...(codeindex ? { codeindex } : {}),
   };
 }
 
