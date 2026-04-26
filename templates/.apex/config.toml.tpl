@@ -26,3 +26,12 @@ mode = "block"
 # Opt-in property graph at .apex/index/graph.sqlite.
 # Build with: apex graph sync. Query with: apex graph deps|dependents|blast|stats.
 enabled = false
+
+[codeindex]
+# Tree-sitter symbol index over your source code (Tier 3, opt-in).
+# Set to true after running `apex codeindex sync` once.
+enabled = false
+# Languages to index. Defaults to all supported when unset.
+# languages = ["ts", "tsx", "js", "py"]
+# Skip files larger than this many KB.
+max_file_kb = 2000

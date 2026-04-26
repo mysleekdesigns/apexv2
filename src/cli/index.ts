@@ -107,6 +107,17 @@ async function registerGraph(program: Command): Promise<void> {
   }
 }
 
+async function registerCodeindex(program: Command): Promise<void> {
+  try {
+    const { codeindexCommand } = (await import("./commands/codeindex.js")) as {
+      codeindexCommand: () => Command;
+    };
+    program.addCommand(codeindexCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -126,6 +137,7 @@ async function main(): Promise<void> {
   await registerPromote(program);
   await registerCurate(program);
   await registerGraph(program);
+  await registerCodeindex(program);
 
   await program.parseAsync(process.argv);
 }
