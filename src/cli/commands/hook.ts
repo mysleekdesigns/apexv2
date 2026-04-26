@@ -32,6 +32,7 @@ import {
 } from "../../episode/writer.js";
 import { newEpisodeId } from "../../episode/id.js";
 import type { EpisodeMeta } from "../../types/shared.js";
+import { computeDashboard } from "../../dashboard/index.js";
 
 // ---------- helpers -----------------------------------------------------------
 
@@ -186,9 +187,12 @@ function handleSessionStart(
   };
   startEpisode(root, meta);
   writeCurrentEpisode(root, episodeId);
-  // SessionStart hooks may emit text on stdout that Claude Code injects into
-  // context. Phase 1.4 (recall skill) populates this; for now, no-op.
   process.stdout.write(`APEX episode ${episodeId} started.\n`);
+  try {
+    process.stdout.write(`${computeDashboard(root).line}\n`);
+  } catch (err) {
+    logHookError(root, "session-start", err);
+  }
 }
 
 const UserPromptSubmitPayload = z

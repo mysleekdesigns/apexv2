@@ -25,7 +25,7 @@ You are the **curator** subagent for APEX. Your job is to keep the `.apex/knowle
 
 ## Procedure
 
-1. Run `apex curate` (with `--cwd <project-root>` if needed, and `--stale-days <n>` if the user specified a custom window).
+1. Run `apex curate` (with `--cwd <project-root>` if needed, and `--stale-days <n>` if the user specified a custom window). For drift-focused passes, use `--drift-only`. To write `verified: false` to flagged entries, the user must explicitly pass `--mark-verified` (default: off).
 2. Read the generated summary at `.apex/curation/<YYYY-MM-DD>.md`.
 3. For each section in the summary, explain to the user:
    - **Duplicate clusters**: which entries are near-duplicates, their similarity score, and which (if any) merge proposals were written to `.apex/proposed/`.
@@ -65,6 +65,21 @@ After running `apex curate`, respond with:
 ```
 
 If all counts are zero, say so clearly and affirm the knowledge base is healthy.
+
+## Drift kinds
+
+The curator's drift detector reports four kinds with default severities:
+
+- `file_missing` (high) — `file/<path>:<line>` source ref no longer exists.
+- `symbol_missing` (medium) — `symbol:<file>:<line>` source ref or `[[wiki-link]]` body link no longer resolves in the codeindex (or grep fallback).
+- `reference_missing` (medium) — frontmatter `references: [...]` lists a non-existent path.
+- `path_missing` (low) — inline relative path in the body markdown no longer exists.
+
+The summary's `### Drift severity breakdown` line shows the high/medium/low totals.
+
+## Scheduling
+
+`apex curate --schedule weekly` writes `.apex/schedule/curate.toml` declaring the cadence. v1 is descriptor-only; future plugin installs wire it into Claude Code's scheduler primitive.
 
 ## Stop conditions
 

@@ -2,7 +2,7 @@
 
 import type { DedupedCluster } from "./dedupe.js";
 import type { StaleEntry } from "./stale.js";
-import type { DriftEntry } from "./drift.js";
+import type { DriftEntry, DriftSeverityCounts } from "./drift.js";
 
 export interface SummaryData {
   date: string;
@@ -10,6 +10,7 @@ export interface SummaryData {
   staleEntries: StaleEntry[];
   driftEntries: DriftEntry[];
   mergeProposals: string[];
+  driftSeverity?: DriftSeverityCounts;
 }
 
 function section(title: string, lines: string[]): string {
@@ -71,6 +72,15 @@ export function renderSummary(data: SummaryData): string {
     );
   }
   parts.push(section("Drift candidates", driftLines));
+
+  // ---- Drift severity breakdown (Phase 4.3) ---------------------------------
+  if (data.driftSeverity) {
+    const sb = data.driftSeverity;
+    parts.push(`### Drift severity breakdown`);
+    parts.push("");
+    parts.push(`high: ${sb.high}, medium: ${sb.medium}, low: ${sb.low}`);
+    parts.push("");
+  }
 
   // ---- Tally ----------------------------------------------------------------
   parts.push("## Tally");

@@ -3,11 +3,20 @@ import kleur from "kleur";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCurator } from "../../curator/index.js";
+import { installCurationSchedule, type Cadence } from "../../curator/schedule.js";
 
 interface CliOpts {
   dryRun?: boolean;
   staleDays?: string;
   cwd?: string;
+  driftOnly?: boolean;
+  markVerified?: boolean;
+  schedule?: string;
+}
+
+function parseCadence(s: string): Cadence | null {
+  if (s === "weekly" || s === "daily") return s;
+  return null;
 }
 
 async function runCli(opts: CliOpts): Promise<void> {
@@ -19,7 +28,27 @@ async function runCli(opts: CliOpts): Promise<void> {
     process.exit(1);
   }
 
-  const report = await runCurator(root, { dryRun: opts.dryRun, staleDays });
+  // Schedule writing is independent of the curation pass — write first if requested.
+  if (opts.schedule !== undefined) {
+    const cadence = parseCadence(opts.schedule);
+    if (!cadence) {
+      console.error(kleur.red(`error: --schedule must be "weekly" or "daily"`));
+      process.exit(1);
+    }
+    const desc = await installCurationSchedule(root, { cadence });
+    console.log(
+      kleur.cyan(
+        `schedule: wrote ${path.relative(root, desc.path)} (cadence=${desc.cadence}, command="${desc.command}")`,
+      ),
+    );
+  }
+
+  const report = await runCurator(root, {
+    dryRun: opts.dryRun,
+    staleDays,
+    driftOnly: opts.driftOnly,
+    markVerified: opts.markVerified,
+  });
 
   const tag = opts.dryRun ? "[dry-run] " : "";
   console.log(
@@ -30,6 +59,14 @@ async function runCli(opts: CliOpts): Promise<void> {
         `${report.mergeProposals.length} merge proposal(s) written.`,
     ),
   );
+
+  if (report.driftHits.length > 0) {
+    console.log(
+      kleur.cyan(
+        `  drift severity: high=${report.driftSeverity.high} medium=${report.driftSeverity.medium} low=${report.driftSeverity.low} (${report.driftHits.length} total hit(s))`,
+      ),
+    );
+  }
 
   if (report.duplicateClusters.length > 0) {
     console.log(kleur.yellow("  duplicate clusters:"));
@@ -66,21 +103,47 @@ async function runCli(opts: CliOpts): Promise<void> {
     }
   }
 
+  if (report.driftHits.length > 0) {
+    console.log(kleur.yellow("  extended drift hits:"));
+    for (const h of report.driftHits) {
+      console.log(
+        kleur.gray(`    ${h.entry_id} [${h.severity}] ${h.kind}: ${h.ref}`),
+      );
+    }
+  }
+
+  if (report.verifyResult) {
+    const v = report.verifyResult;
+    console.log(
+      kleur.cyan(
+        `  ${tag}verify: ${v.flagged.length} flagged, ${v.updated.length} updated, ${v.cleared.length} cleared`,
+      ),
+    );
+  }
+
   if (!opts.dryRun) {
     console.log(kleur.gray(`  summary written to ${path.relative(root, report.summaryPath)}`));
   }
 }
 
-export function curateCommand(): Command {
-  const cmd = new Command("curate");
-  cmd
-    .description(
-      "Curate the APEX knowledge base: detect duplicates, stale entries, and drift. Writes a summary to .apex/curation/<date>.md.",
-    )
+function configure(cmd: Command): Command {
+  return cmd
     .option("--dry-run", "do not write any files; report what would be written")
     .option("--stale-days <n>", "days without validation or retrieval before an entry is stale (default: 30)")
-    .option("--cwd <path>", "project root (default: cwd)", process.cwd())
-    .action(async (opts: CliOpts) => runCli(opts));
+    .option("--drift-only", "skip dedupe and stale checks; run only drift detection")
+    .option(
+      "--mark-verified",
+      "write `verified: false` and `drift_report:` to flagged knowledge entries (default: off)",
+    )
+    .option("--schedule <cadence>", "write a curation schedule descriptor (cadence: weekly | daily)")
+    .option("--cwd <path>", "project root (default: cwd)", process.cwd());
+}
+
+export function curateCommand(): Command {
+  const cmd = new Command("curate").description(
+    "Curate the APEX knowledge base: detect duplicates, stale entries, and drift. Writes a summary to .apex/curation/<date>.md.",
+  );
+  configure(cmd).action(async (opts: CliOpts) => runCli(opts));
   return cmd;
 }
 
@@ -96,15 +159,10 @@ function isInvokedDirectly(): boolean {
 }
 
 if (isInvokedDirectly()) {
-  const standalone = new Command("apex-curate");
-  standalone
-    .description(
-      "Curate the APEX knowledge base: detect duplicates, stale entries, and drift.",
-    )
-    .option("--dry-run", "do not write any files; report what would be written")
-    .option("--stale-days <n>", "days without validation or retrieval before an entry is stale (default: 30)")
-    .option("--cwd <path>", "project root (default: cwd)", process.cwd())
-    .action(async (opts: CliOpts) => runCli(opts));
+  const standalone = new Command("apex-curate").description(
+    "Curate the APEX knowledge base: detect duplicates, stale entries, and drift.",
+  );
+  configure(standalone).action(async (opts: CliOpts) => runCli(opts));
   standalone.parseAsync(process.argv).catch((e: unknown) => {
     console.error(e);
     process.exit(1);

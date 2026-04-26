@@ -5,6 +5,7 @@ import { Command } from "commander";
 import { projectPaths } from "../../util/paths.js";
 import { detect } from "../../detect/index.js";
 import { readInstallJson } from "../../scaffold/installer.js";
+import { computeDashboard } from "../../dashboard/index.js";
 
 async function countFiles(dir: string, ext = ".md"): Promise<number> {
   if (!(await fs.pathExists(dir))) return 0;
@@ -73,6 +74,9 @@ export async function runStatus(flags: StatusFlags): Promise<number> {
   process.stdout.write(`  hooks:          ${hookCount} configured\n`);
   process.stdout.write(`  knowledge:      ${counts.decisions} decisions, ${counts.patterns} patterns, ${counts.gotchas} gotchas, ${counts.conventions} conventions\n`);
   process.stdout.write(`  proposed:       ${counts.proposed} awaiting review\n`);
+  process.stdout.write("\n");
+  const dash = computeDashboard(root);
+  process.stdout.write(`  ${dash.line}\n`);
   return 0;
 }
 

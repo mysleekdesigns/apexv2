@@ -139,6 +139,28 @@ async function registerCodeindex(program: Command): Promise<void> {
   }
 }
 
+async function registerEval(program: Command): Promise<void> {
+  try {
+    const { evalCommand } = (await import("./commands/eval.js")) as {
+      evalCommand: () => Command;
+    };
+    program.addCommand(evalCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerCalibrate(program: Command): Promise<void> {
+  try {
+    const { calibrateCommand } = (await import("./commands/calibrate.js")) as {
+      calibrateCommand: () => Command;
+    };
+    program.addCommand(calibrateCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -160,6 +182,8 @@ async function main(): Promise<void> {
   await registerCurate(program);
   await registerGraph(program);
   await registerCodeindex(program);
+  await registerEval(program);
+  await registerCalibrate(program);
 
   await program.parseAsync(process.argv);
 }

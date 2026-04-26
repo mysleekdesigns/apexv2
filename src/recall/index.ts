@@ -30,6 +30,12 @@ export interface RecallOptions {
 
 export interface RecallSearchOptions extends Omit<SearchOptions, "tier"> {
   tier?: RecallTier;
+  /**
+   * When false (default), low-confidence entries are filtered from the
+   * fused result unless the query explicitly mentions an entry id.
+   * Phase 4.2: confidence calibration.
+   */
+  includeLowConfidence?: boolean;
 }
 
 export interface RecallStats extends StoreStats {
@@ -143,7 +149,13 @@ export class Recall {
         knowledgeVersion: () => knowledgeVersion,
         cache: this.cache,
       },
-      { k, ...(this.rerank ? { rerank: this.rerank } : {}) },
+      {
+        k,
+        ...(this.rerank ? { rerank: this.rerank } : {}),
+        ...(opts.includeLowConfidence !== undefined
+          ? { includeLowConfidence: opts.includeLowConfidence }
+          : {}),
+      },
     );
   }
 
