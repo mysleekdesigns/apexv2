@@ -156,20 +156,20 @@ Each phase is independently shippable. Phase 1 alone is more useful than 90% of 
 
 ---
 
-### ✅ Phase 0 — Foundation & Spec (Week 0–1)
+### ✅ Phase 0 — Foundation & Spec (Week 0–1) — **COMPLETE (2026-04-26)**
 
 **Goal:** Lock down primitives, schemas, and metrics before writing code.
 
-- [ ] Pin Claude Code minimum version (≥ 2.1.x for deferred MCP loading, agent hooks, subagent memory).
-- [ ] Write the **knowledge file schema** — frontmatter spec for `decisions`, `patterns`, `gotchas`, `conventions` (id, title, source, confidence, created, last-validated, supersedes).
-- [ ] Write the **episode schema** — session id, prompts, tools used, files touched, outcomes, errors, corrections.
-- [ ] Define the **eval harness contract** — how a task replay measures "did APEX help?".
-- [ ] Define **success metrics** (see §10).
-- [ ] Choose default install method: `npx apex` (Node) for the broadest reach; document a `pip install apex-cc` mirror.
-- [ ] Threat-model: what should *never* go into knowledge files (secrets, PII, proprietary external IP)? Build a redactor skill.
-- [ ] Write a one-page README that a brand-new user can follow in 60 seconds.
+- [x] Pin Claude Code minimum version (≥ 2.1.0 for deferred MCP loading, agent hooks, subagent memory). → [`specs/compatibility.md`](specs/compatibility.md)
+- [x] Write the **knowledge file schema** — frontmatter spec for `decisions`, `patterns`, `gotchas`, `conventions` (id, title, source, confidence, created, last-validated, supersedes). → [`specs/knowledge-schema.md`](specs/knowledge-schema.md)
+- [x] Write the **episode schema** — session id, prompts, tools used, files touched, outcomes, errors, corrections. → [`specs/episode-schema.md`](specs/episode-schema.md)
+- [x] Define the **eval harness contract** — how a task replay measures "did APEX help?". → [`specs/eval-harness.md`](specs/eval-harness.md)
+- [x] Define **success metrics** (see §10). → [`specs/metrics.md`](specs/metrics.md)
+- [x] Choose default install method: `npx apex@latest init` (Node) primary; `pipx install apex-cc` mirror. → [`specs/install.md`](specs/install.md)
+- [x] Threat-model: what should *never* go into knowledge files (secrets, PII, proprietary external IP); design a redactor. → [`specs/threat-model.md`](specs/threat-model.md), [`specs/redactor-design.md`](specs/redactor-design.md)
+- [x] Write a one-page README that a brand-new user can follow in 60 seconds. → [`README.md`](README.md)
 
-**Exit criteria:** schemas merged, eval contract documented, install path decided.
+**Exit criteria (met):** schemas merged, eval contract documented, install path decided. JSON Schema blocks validated; cross-spec file-name contract reconciled (`meta.json`, `edits.jsonl`, `retrievals.jsonl` defined in episode-schema and consumed unchanged by eval-harness + metrics).
 
 ---
 
@@ -486,7 +486,7 @@ Phase 1 must measure these from day one. Phase 4 makes them visible to the user.
 
 ## 12. Phase Checklist Summary
 
-- [ ] **Phase 0** — Spec & schemas locked
+- [x] **Phase 0** — Spec & schemas locked (2026-04-26)
 - [ ] **Phase 1** — MVP capture + recall (3 weeks)
 - [ ] **Phase 2** — Reflection + distillation (2 weeks)
 - [ ] **Phase 3** — Retrieval engine + code intelligence (3 weeks)
