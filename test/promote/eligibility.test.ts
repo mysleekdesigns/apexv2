@@ -119,6 +119,7 @@ describe("findEligible — threshold rule", () => {
     await writeProposal(root, "my-gotcha", content);
 
     const config: ApexConfig = {
+      ...getDefaults(),
       auto_merge: { ...getDefaults().auto_merge, threshold: 1 },
     };
     const results = await findEligible(root, config);
@@ -140,6 +141,7 @@ describe("findEligible — confidence rule", () => {
     await writeProposal(root, "low-conf", content);
 
     const config: ApexConfig = {
+      ...getDefaults(),
       auto_merge: { ...getDefaults().auto_merge, min_confidence: "medium" },
     };
     const results = await findEligible(root, config);
@@ -152,6 +154,7 @@ describe("findEligible — confidence rule", () => {
     await writeProposal(root, "medium-conf", content);
 
     const config: ApexConfig = {
+      ...getDefaults(),
       auto_merge: { ...getDefaults().auto_merge, min_confidence: "medium" },
     };
     const results = await findEligible(root, config);
@@ -163,6 +166,7 @@ describe("findEligible — confidence rule", () => {
     await writeProposal(root, "high-conf", content);
 
     const config: ApexConfig = {
+      ...getDefaults(),
       auto_merge: { ...getDefaults().auto_merge, min_confidence: "low" },
     };
     const results = await findEligible(root, config);
@@ -215,6 +219,7 @@ describe("findEligible — conflict rule (require_no_conflict)", () => {
     await writeKnowledge(root, "gotchas", "existing-entry", content);
 
     const config: ApexConfig = {
+      ...getDefaults(),
       auto_merge: { ...getDefaults().auto_merge, require_no_conflict: false },
     };
     const results = await findEligible(root, config);

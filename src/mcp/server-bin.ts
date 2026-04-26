@@ -6,7 +6,7 @@ async function main(): Promise<void> {
   const { ctx } = await runStdio(root);
   const shutdown = (): void => {
     try {
-      ctx.recall.close();
+      ctx.close();
     } catch {
       /* ignore */
     }

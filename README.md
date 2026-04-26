@@ -1,1 +1,254 @@
 # Smoke
+
+## MCP server
+
+APEX ships a stdio MCP server (`apex-mcp`) exposing recall and capture tools. It
+is auto-registered into the project's `.mcp.json` by `apex init`.
+
+### Auto-registration
+
+`apex init` calls `registerApexMcp` near the end of the install flow. The helper:
+
+- Creates `.mcp.json` if missing, populated from `templates/.mcp.json.tpl`.
+- Merges into an existing file by server name (`apex`); other entries and
+  top-level keys are preserved.
+- Is idempotent — re-running is a no-op when the entry already matches.
+- Recovers from malformed JSON by renaming the file with a `.bak.<ts>` suffix
+  and writing fresh; a warning is logged to stderr.
+
+### Tools exposed
+
+Six tools, registered through a single declarative array in `src/mcp/index.ts`:
+
+| Tool | Purpose |
+|---|---|
+| `apex_search` | Hybrid keyword (Tier 1 FTS5) retrieval over the knowledge base |
+| `apex_get` | Fetch a full knowledge entry by id (and optional type) |
+| `apex_get_decision` | Typed convenience wrapper around `apex_get` filtered to `type: decision` |
+| `apex_record_correction` | Append a user-driven correction to `.apex/proposed/_corrections.md` |
+| `apex_propose` | Write a candidate knowledge entry to `.apex/proposed/` |
+| `apex_stats` | Index counts, last sync time, drift warnings |
+
+### Deferred / lazy loading
+
+The `@modelcontextprotocol/sdk` v1 protocol requires tool input schemas at
+registration time, so APEX cannot defer schema delivery itself. What APEX does
+instead, per PRD §3.3 and `specs/compatibility.md`:
+
+- The SQLite recall handle is opened lazily on the first tool invocation.
+  `tools/list` does not touch disk and creates no DB file.
+- The `tools.listChanged` capability is advertised so newer Claude Code clients
+  refresh the tool list automatically.
+- `serverInfo.instructions` advertises the supported tool set, the minimum
+  Claude Code version (2.1.0), and a pointer to PRD §3.3.
+
+### Inspecting the registration
+
+```bash
+cat .mcp.json | jq .mcpServers.apex
+```
+
+The entry is tagged with `"_apex_managed": true` so future APEX upgrades can
+identify it.
+
+### Disabling / removing
+
+- Temporary disable: edit `.mcp.json` and remove or rename the `apex` entry.
+  Claude Code re-reads `.mcp.json` between sessions.
+- Permanent removal: `apex uninstall` calls `unregisterApexMcp`, which strips
+  only the `apex` entry. If `.mcp.json` ends up with no servers and no other
+  top-level keys, the file is deleted.
+
+## Knowledge graph (opt-in)
+
+APEX ships an opt-in property graph that links knowledge entries to each other and to files/symbols, enabling blast-radius queries like "what depends on the `auth-rotation` decision?".
+
+Backing store: SQLite at `.apex/index/graph.sqlite`. Built from your existing `.apex/knowledge/` files — no extra files to maintain.
+
+### Enable
+
+```toml
+# .apex/config.toml
+[graph]
+enabled = true
+```
+
+`apex graph sync` auto-creates the index, so the toggle is purely declarative.
+
+### Build
+
+```bash
+apex graph sync
+```
+
+### Query
+
+```bash
+apex graph deps decision:auth-rotation        # outgoing edges
+apex graph dependents decision:auth-rotation  # incoming edges (callers)
+apex graph blast decision:auth-rotation --depth 2
+apex graph stats
+```
+
+Add `--json` to any command for machine-readable output.
+
+### Edge types
+
+| Relation | Source → Target | Meaning |
+|---|---|---|
+| `supersedes` | `<entry>` → `<other-entry>` | Replaces an older entry (cross-type lookup; falls back to `unknown:<id>`) |
+| `tagged` | `<entry>` → `tag:<name>` | Frontmatter tag |
+| `affects` | `decision:<id>` → `file:<path>` | A decision binds a file/dir |
+| `applies-to` | `gotcha:<id>` → `file:<path>` or `symbol:<file>:<line>` | Where the gotcha shows up |
+| `references` | `pattern:<id>` → `<other-entry>` | `[[wiki-link]]` in body or explicit `references:` frontmatter |
+
+### MCP exposure
+
+The graph also exports MCP tool handlers (`apex_graph_dependents`, `apex_graph_dependencies`, `apex_graph_blast`) and zod input shapes at `src/graph/mcp-tools.ts`. The `apex-mcp` server registers them when `[graph].enabled = true`.
+
+## Code-symbol index (opt-in)
+
+APEX ships an optional Tier 3 retrieval backend that builds a tree-sitter
+symbol index over your source code. It complements the always-on FTS5
+knowledge index (Tier 1) and the optional vector store (Tier 2): instead
+of searching natural-language knowledge, it lets Claude jump from a
+phrase like "the auth handler" to a precise file/line by name or path
+hint, no grep guessing required.
+
+The index is local-only, rebuildable, and stored alongside the other
+APEX state at `.apex/index/symbols.sqlite`. No native compilation —
+parsing runs through `web-tree-sitter` (WASM) so it works on macOS,
+Linux and Windows on Node 20+ without a build step.
+
+### Languages supported
+
+- TypeScript (`.ts`, `.mts`, `.cts`)
+- TSX (`.tsx`)
+- JavaScript (`.js`, `.mjs`, `.cjs`, `.jsx`)
+- Python (`.py`)
+
+Grammars are loaded from the bundled `tree-sitter-wasms` package — no
+native build required.
+
+### Symbol kinds
+
+Each indexed symbol records `name`, `kind`, `file`, `line`, `end_line`,
+`exported`, `language`. Supported kinds:
+
+- `function`
+- `class`
+- `method`
+- `type` (TS type aliases)
+- `interface` (TS interfaces)
+- `const` (top-level `const`/`let`/`var` bindings)
+
+`exported` is true for TS/JS symbols whose declaration is wrapped in
+`export ...` and for top-level Python names that don't start with `_`.
+
+### Enabling it
+
+Add a `[codeindex]` block to `.apex/config.toml`:
+
+```toml
+[codeindex]
+enabled = true
+# Optional: restrict to a subset.
+# languages = ["ts", "tsx", "js", "py"]
+# Skip files larger than this many KB (default 2000).
+max_file_kb = 2000
+```
+
+### CLI
+
+```bash
+apex codeindex sync           # walk repo, refresh symbols.sqlite
+apex codeindex find Service   # search the index
+apex codeindex find run --kind method --exported
+apex codeindex find handler --path auth   # path-substring bias
+apex codeindex stats          # totals + per-language counts
+```
+
+`apex codeindex sync` walks the repo respecting `.gitignore` (via the
+`ignore` package) and always skips `node_modules`, `dist`, `build`,
+`.git`, `.apex`, `.next`, `.turbo`, `.cache`, `coverage`, `out`, plus
+any file larger than `max_file_kb`. Mtime-driven incremental sync means
+re-runs only re-parse changed files.
+
+### Programmatic API
+
+```ts
+import { CodeIndex } from "apex-cc/codeindex";
+
+const index = new CodeIndex(process.cwd());
+await index.sync();
+const hits = await index.findSymbol("authHandler", { k: 5 });
+const byPath = await index.findByPathHint("auth handler", { k: 5 });
+index.close();
+```
+
+### MCP exposure
+
+`src/codeindex/mcp-tools.ts` exports `apexFindSymbol(ctx, args)` plus a
+zod input schema (`findSymbolInputSchema`) ready for registration in
+`apex-mcp`. The tool combines a direct symbol-name search with an
+optional `path_hint` substring bias and returns ranked `SymbolHit`
+records — wire it into the MCP server when ready.
+
+## Vector retrieval (opt-in)
+
+APEX ships a Tier 1 SQLite FTS5 keyword index by default. Tier 2 adds a local
+LanceDB vector index with on-device embeddings — no network calls, no API
+keys. Enable it when you want semantic recall (e.g. "the auth handler" matches
+a knowledge entry titled "JWT refresh-token rotation").
+
+### Enable
+
+```
+apex enable vector
+```
+
+This:
+
+1. Flips `[vector].enabled = true` in `.apex/config.toml`.
+2. Creates `.apex/index/vectors.lance/` (gitignored).
+3. Downloads the default embedding model (`Xenova/all-MiniLM-L6-v2`, ~25MB,
+   384-dim) on first use via `@xenova/transformers`. Cached under your user
+   transformers directory; subsequent runs are offline.
+4. Runs an mtime-incremental sync of the existing knowledge base into the
+   vector index.
+
+### Disable
+
+```
+apex disable vector
+```
+
+Flips the config flag and stops vector lookups. Index files at
+`.apex/index/vectors.lance/` are left in place so re-enabling is instant.
+
+### Search by tier
+
+```
+apex search "auth handler" --tier hybrid    # default when vector is enabled
+apex search "auth handler" --tier vector    # vector-only
+apex search "auth handler" --tier fts       # FTS5-only (always available)
+```
+
+`hybrid` runs both tiers in parallel and fuses the rankings via Reciprocal
+Rank Fusion (RRF, k=60). Hits that surface in both tiers are tagged
+`tier: "hybrid"`; otherwise the originating tier sticks.
+
+### Where data lives
+
+| Path | Purpose | Committed |
+|---|---|---|
+| `.apex/knowledge/` | Knowledge entries (markdown + frontmatter) | yes |
+| `.apex/index/fts.sqlite` | Tier 1 FTS5 index | no (gitignored) |
+| `.apex/index/vectors.lance/` | Tier 2 vector index | no (gitignored) |
+| `.apex/config.toml` | `[vector] enabled = true|false` | yes |
+
+### Testing without the model download
+
+The vector store and embedder honour `APEX_VECTOR_FAKE=1`, which substitutes
+deterministic 384-dim hash-based vectors for the real model. Used by the unit
+tests and useful for CI runs where you don't want to download model weights.

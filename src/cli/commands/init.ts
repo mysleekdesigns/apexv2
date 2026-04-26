@@ -10,6 +10,7 @@ import {
   readInstallJson,
   runInstall,
 } from "../../scaffold/installer.js";
+import { registerApexMcp } from "../../scaffold/mcpRegistration.js";
 import { permissionsBanner } from "../../scaffold/permissions.js";
 import { CLAUDE_CODE_MIN_VERSION } from "../../types/shared.js";
 
@@ -123,6 +124,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
         ),
       );
     }
+
+    await registerApexMcp(root);
 
     process.stdout.write(`\n${formatStatsBanner(result, proposedCount)}\n`);
     process.stdout.write(

@@ -64,13 +64,32 @@ export const apexProposeInputShape = {
 
 export const apexStatsInputShape = {} as const;
 
+export const apexGetDecisionInputShape = {
+  entry_id: z.string().min(1).max(64),
+};
+
 export interface ToolContext {
   root: string;
-  recall: Recall;
+  /** Heavy-resource accessor: opens SQLite + recall on first call. */
+  getRecall(): Recall;
+  /** Closes the underlying recall handle if it was ever opened. */
+  close(): void;
 }
 
 export function createToolContext(root: string): ToolContext {
-  return { root: path.resolve(root), recall: new Recall(root) };
+  const resolved = path.resolve(root);
+  let recall: Recall | null = null;
+  return {
+    root: resolved,
+    getRecall(): Recall {
+      if (recall === null) recall = new Recall(resolved);
+      return recall;
+    },
+    close(): void {
+      recall?.close();
+      recall = null;
+    },
+  };
 }
 
 export interface SearchResultPayload {
@@ -82,7 +101,7 @@ export async function apexSearch(
   ctx: ToolContext,
   args: { query: string; type?: KnowledgeType; k?: number },
 ): Promise<SearchResultPayload> {
-  const hits = await ctx.recall.search(args.query, {
+  const hits = await ctx.getRecall().search(args.query, {
     type: args.type,
     k: args.k ?? 5,
   });
@@ -93,7 +112,14 @@ export async function apexGet(
   ctx: ToolContext,
   args: { entry_id: string; type?: KnowledgeType },
 ): Promise<KnowledgeEntry | null> {
-  return ctx.recall.get(args.entry_id, args.type);
+  return ctx.getRecall().get(args.entry_id, args.type);
+}
+
+export async function apexGetDecision(
+  ctx: ToolContext,
+  args: { entry_id: string },
+): Promise<KnowledgeEntry | null> {
+  return ctx.getRecall().get(args.entry_id, "decision");
 }
 
 export interface RecordCorrectionResult {
@@ -169,7 +195,7 @@ export interface StatsResult {
 }
 
 export async function apexStats(ctx: ToolContext): Promise<StatsResult> {
-  const s = await ctx.recall.stats();
+  const s = await ctx.getRecall().stats();
   return {
     total: s.total,
     by_type: s.byType,
