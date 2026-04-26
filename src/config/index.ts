@@ -18,8 +18,14 @@ export interface AutoMergeConfig {
   min_confidence: Confidence;
 }
 
+export interface GraphConfig {
+  /** When false, `apex graph` commands still work, but other code paths should not assume the graph is fresh. */
+  enabled: boolean;
+}
+
 export interface ApexConfig {
   auto_merge: AutoMergeConfig;
+  graph: GraphConfig;
 }
 
 const DEFAULTS: ApexConfig = {
@@ -29,11 +35,15 @@ const DEFAULTS: ApexConfig = {
     require_no_conflict: true,
     min_confidence: "low",
   },
+  graph: {
+    enabled: false,
+  },
 };
 
 export function getDefaults(): ApexConfig {
   return {
     auto_merge: { ...DEFAULTS.auto_merge },
+    graph: { ...DEFAULTS.graph },
   };
 }
 
@@ -75,6 +85,12 @@ export async function loadConfig(root: string): Promise<ApexConfig> {
     ? (rawAm["min_confidence"] as Confidence)
     : defaults.auto_merge.min_confidence;
 
+  const rawGraph = (raw["graph"] ?? {}) as Record<string, unknown>;
+  const graphEnabled =
+    typeof rawGraph["enabled"] === "boolean"
+      ? rawGraph["enabled"]
+      : defaults.graph.enabled;
+
   return {
     auto_merge: {
       enabled,
@@ -82,6 +98,7 @@ export async function loadConfig(root: string): Promise<ApexConfig> {
       require_no_conflict,
       min_confidence,
     },
+    graph: { enabled: graphEnabled },
   };
 }
 

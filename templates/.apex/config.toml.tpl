@@ -21,3 +21,8 @@ max_tokens = 2048
 
 [redactor]
 mode = "block"
+
+[graph]
+# Opt-in property graph at .apex/index/graph.sqlite.
+# Build with: apex graph sync. Query with: apex graph deps|dependents|blast|stats.
+enabled = false

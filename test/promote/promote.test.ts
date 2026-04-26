@@ -268,7 +268,7 @@ describe("autoPromoteAll", () => {
       "utf8",
     );
 
-    const config: ApexConfig = { auto_merge: { enabled: true, threshold: 2, require_no_conflict: true, min_confidence: "low" } };
+    const config: ApexConfig = { auto_merge: { enabled: true, threshold: 2, require_no_conflict: true, min_confidence: "low" }, graph: { enabled: false } };
     await saveConfig(root, config);
 
     const report = await autoPromoteAll(root);
@@ -288,7 +288,7 @@ describe("autoPromoteAll", () => {
       "utf8",
     );
 
-    const config: ApexConfig = { auto_merge: { enabled: false, threshold: 1, require_no_conflict: true, min_confidence: "low" } };
+    const config: ApexConfig = { auto_merge: { enabled: false, threshold: 1, require_no_conflict: true, min_confidence: "low" }, graph: { enabled: false } };
     await saveConfig(root, config);
 
     const report = await autoPromoteAll(root);
