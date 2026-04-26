@@ -35,3 +35,11 @@ enabled = false
 # languages = ["ts", "tsx", "js", "py"]
 # Skip files larger than this many KB.
 max_file_kb = 2000
+
+# Vector retrieval (Tier 2 — opt-in). Run `apex enable vector` to flip
+# `enabled = true` and build the local index. Disabled by default; FTS5 alone
+# is fast and zero-dep. See PRD §3.1.
+# [vector]
+# enabled = false
+# model = "Xenova/all-MiniLM-L6-v2"
+# dim = 384

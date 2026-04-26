@@ -16,6 +16,7 @@ async function registerSearch(program: Command): Promise<void> {
         root?: string;
         type?: string;
         k?: number;
+        tier?: "fts" | "vector" | "hybrid";
         json?: boolean;
       }) => Promise<string>;
     };
@@ -24,18 +25,38 @@ async function registerSearch(program: Command): Promise<void> {
       .description("Search the APEX knowledge base")
       .option("--type <type>", "Filter by entry type (decision|pattern|gotcha|convention)")
       .option("--k <n>", "Number of results to return", (v) => parseInt(v, 10), 5)
+      .option("--tier <tier>", "Retrieval tier: fts | vector | hybrid")
       .option("--json", "Emit JSON")
       .option("--cwd <path>", "Run as if invoked from <path>")
       .action(async (query: string, opts: Record<string, unknown>) => {
+        const tier = opts["tier"] as string | undefined;
+        if (tier && !["fts", "vector", "hybrid"].includes(tier)) {
+          process.stderr.write(`error: invalid --tier "${tier}" (use fts|vector|hybrid)\n`);
+          process.exit(2);
+        }
         const out = await runSearch({
           query,
           root: opts["cwd"] as string | undefined,
           type: opts["type"] as string | undefined,
           k: opts["k"] as number | undefined,
+          ...(tier ? { tier: tier as "fts" | "vector" | "hybrid" } : {}),
           json: Boolean(opts["json"]),
         });
         process.stdout.write(out + (out.endsWith("\n") ? "" : "\n"));
       });
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerEnable(program: Command): Promise<void> {
+  try {
+    const { enableCommand, disableCommand } = (await import("./commands/enable.js")) as {
+      enableCommand: () => Command;
+      disableCommand: () => Command;
+    };
+    program.addCommand(enableCommand());
+    program.addCommand(disableCommand());
   } catch {
     // module missing; skip silently.
   }
@@ -131,6 +152,7 @@ async function main(): Promise<void> {
   registerUninstall(program);
 
   await registerSearch(program);
+  await registerEnable(program);
   await registerHook(program);
   await registerArchaeologist(program);
   await registerReflect(program);

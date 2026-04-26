@@ -132,6 +132,11 @@ describe("saveConfig + loadConfig round-trip", () => {
         min_confidence: "medium",
       },
       graph: { enabled: true },
+      vector: {
+        enabled: false,
+        model: "Xenova/all-MiniLM-L6-v2",
+        dim: 384,
+      },
     };
     await saveConfig(root, toSave);
     const loaded = await loadConfig(root);
@@ -149,6 +154,11 @@ describe("saveConfig + loadConfig round-trip", () => {
         min_confidence: "low",
       },
       graph: { enabled: false },
+      vector: {
+        enabled: false,
+        model: "Xenova/all-MiniLM-L6-v2",
+        dim: 384,
+      },
     };
     await saveConfig(root, toSave);
     const loaded = await loadConfig(root);
