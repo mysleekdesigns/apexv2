@@ -233,6 +233,72 @@ async function registerCommitKnowledge(program: Command): Promise<void> {
   }
 }
 
+async function registerPrmine(program: Command): Promise<void> {
+  try {
+    const { prmineCommand } = (await import("./commands/prmine.js")) as {
+      prmineCommand: () => Command;
+    };
+    program.addCommand(prmineCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerShadow(program: Command): Promise<void> {
+  try {
+    const { shadowCommand } = (await import("./commands/shadow.js")) as {
+      shadowCommand: () => Command;
+    };
+    program.addCommand(shadowCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerHookpolicy(program: Command): Promise<void> {
+  try {
+    const { hookpolicyCommand } = (await import("./commands/hookpolicy.js")) as {
+      hookpolicyCommand: () => Command;
+    };
+    program.addCommand(hookpolicyCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerSync(program: Command): Promise<void> {
+  try {
+    const { syncCommand } = (await import("./commands/sync.js")) as {
+      syncCommand: () => Command;
+    };
+    program.addCommand(syncCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerSwarm(program: Command): Promise<void> {
+  try {
+    const { swarmCommand } = (await import("./commands/swarm.js")) as {
+      swarmCommand: () => Command;
+    };
+    program.addCommand(swarmCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerSkillauthor(program: Command): Promise<void> {
+  try {
+    const { skillauthorCommand } = (await import("./commands/skillauthor.js")) as {
+      skillauthorCommand: () => Command;
+    };
+    program.addCommand(skillauthorCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -262,6 +328,12 @@ async function main(): Promise<void> {
   await registerLink(program);
   await registerAudit(program);
   await registerCommitKnowledge(program);
+  await registerPrmine(program);
+  await registerShadow(program);
+  await registerHookpolicy(program);
+  await registerSync(program);
+  await registerSwarm(program);
+  await registerSkillauthor(program);
 
   await program.parseAsync(process.argv);
 }

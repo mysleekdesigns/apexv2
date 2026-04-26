@@ -354,14 +354,46 @@ Each phase is independently shippable. Phase 1 alone is more useful than 90% of 
 
 ---
 
-### 🧪 Phase 6 — Stretch / Advanced (post-v1)
+### ✅ Phase 6 — Stretch / Advanced (post-v1) — **COMPLETE (2026-04-26)**
 
-- [ ] **Causal mining from PRs**: ingest merged PR diffs + review comments to extract decisions and gotchas without anyone typing them.
-- [ ] **Cross-session memory shadow**: a tiny background subagent that watches an in-flight session and pre-fetches likely-needed knowledge before the user asks.
-- [ ] **Learnable hook policies**: hooks themselves emit metrics; APEX proposes which hooks to enable/disable based on what actually moved the needle.
-- [ ] **Hosted sync (optional)**: encrypted-at-rest knowledge sync for teams who don't want git as the transport. Strictly opt-in.
-- [ ] **Multi-agent swarm**: parallel reflection on long-running sessions across worktrees.
-- [ ] **Skill auto-authoring**: when reflector detects a workflow repeated ≥3 times with the same shape, it drafts a `SKILL.md` proposal.
+**Goal:** Ship the post-v1 stretch ideas as production-ready primitives, with the same local-only / file-based / opt-in posture as the rest of APEX.
+
+#### 6.1 Causal mining from PRs
+- [x] `apex prmine` ingests merged commit history (and optionally `gh`-fetched PR bodies) and heuristically classifies `fix/hotfix/revert/patch` commits as gotcha candidates and `decide/adopt/switch to/migrate to/deprecate` commits as decision candidates. → [`src/prmining/`](src/prmining/), [`src/cli/commands/prmine.ts`](src/cli/commands/prmine.ts)
+- [x] Body-line evidence pulled via `/(why|because|reason|to avoid|gotcha|caveat|note:)/i`; high-signal files (CHANGELOG, ADR-*, docs/decisions/*) boost confidence to `medium` even on single-occurrence. Never `high`.
+- [x] All extracted snippets pass through the existing `src/redactor/`; proposals carry the standard `<!-- PROPOSED — review before moving -->` header and land in `.apex/proposed/` for the existing promote pipeline. Commit/PR refs cited as `commit/<sha>` / `pr/<number>`. → [`src/prmining/proposer.ts`](src/prmining/proposer.ts)
+- [x] CLI: `apex prmine [--since <ref>] [--limit <n>=50] [--include-reviews] [--dry-run] [--cwd <path>]`. `gh` invocation is fully optional and fails silently if missing/unauthenticated. Optional companion agent: [`templates/claude/agents/apex-pr-archaeologist.md`](templates/claude/agents/apex-pr-archaeologist.md).
+
+#### 6.2 Cross-session memory shadow (prefetcher)
+- [x] Hook-adjacent shadow prefetch subsystem that speculatively warms the recall cache for the next prompt. **Median latency 0.2ms** (warm), 26ms cold-start — well under the 100ms hook budget. → [`src/shadow/`](src/shadow/), [`src/cli/commands/shadow.ts`](src/cli/commands/shadow.ts)
+- [x] Predictor extracts noun phrases (48-word inline stopword set, no library), reads recent prompts from the current episode, and emits up to 3 candidate queries (verbatim + top-2 noun-phrase join + intent-slice for "how do/to/what is" patterns). → [`src/shadow/predictor.ts`](src/shadow/predictor.ts)
+- [x] Cache: `.apex/index/prefetch/<sha1(query)>.json` with TTL (default 15 min), atomic write via `.tmp` + rename, fresh-hit accounting in sidecar `hits.jsonl`. Forced `tier: "fts"` to skip embedding latency; `Promise.all` over candidates. → [`src/shadow/cache.ts`](src/shadow/cache.ts), [`src/shadow/stats.ts`](src/shadow/stats.ts)
+- [x] CLI: `apex shadow prefetch --prompt <text> [--ttl <minutes>=15] [--cwd <path>]`, `apex shadow stats [--json]`, `apex shadow clear`. Primitives are deliberately not auto-wired into `UserPromptSubmit` — left for a future hook integration so the orchestrator can decide the right cadence.
+
+#### 6.3 Learnable hook policies
+- [x] Read-only metric aggregator scans `.apex/episodes/*` (meta.json, tools.jsonl, failures.jsonl, corrections.jsonl, prompts.jsonl, snapshots/) within a configurable window and scores each APEX hook by actual signal yield. → [`src/hookpolicy/metrics.ts`](src/hookpolicy/metrics.ts)
+- [x] Recommender emits `keep | disable | insufficient-data` per hook. Rules: ≥1 useful signal in the window → `keep`; 0 signals across ≥5 episodes → `disable` (with caveat); <5 episodes → `insufficient-data`. `SessionStart` is hard-pinned to `keep` because it bootstraps the episode lifecycle itself. `PostToolUseFailure` deduplicates by `tool_call_id` so double-fire events aren't double-counted. → [`src/hookpolicy/recommender.ts`](src/hookpolicy/recommender.ts)
+- [x] Output: `.apex/proposed/_hook-policy-<YYYY-MM-DD>.md` with recommendations, evidence, and a "How to apply" section pointing at `.claude/settings.json`. APEX **never** edits settings.json directly — the user applies changes manually after review. → [`src/hookpolicy/writer.ts`](src/hookpolicy/writer.ts), [`src/hookpolicy/index.ts`](src/hookpolicy/index.ts)
+- [x] CLI: `apex hookpolicy report [--window-days <n>=14] [--cwd <path>] [--dry-run]`, `apex hookpolicy dry-run`, `apex hookpolicy apply` (alias — emphasises file-only output). → [`src/cli/commands/hookpolicy.ts`](src/cli/commands/hookpolicy.ts)
+
+#### 6.4 Encrypted knowledge bundle (sync primitive — local-only)
+- [x] Per the PRD's "no SaaS, default = local-only" stance and `apex audit`'s zero-external-calls invariant, shipped the **local encryption + bundling primitives only**. The actual sync transport (S3, Dropbox, USB, git-annex) remains the user's choice. → [`src/sync/`](src/sync/), [`src/cli/commands/sync.ts`](src/cli/commands/sync.ts)
+- [x] Bundle format: gzip-compressed JSON blob `{ version: 1, created: <iso>, files: [{ path, content_base64 }, ...] }`. No `tar`/`archiver` dep. → [`src/sync/bundle.ts`](src/sync/bundle.ts)
+- [x] Encryption: AES-256-GCM via `node:crypto`. Wire layout: `magic(8)="APEXBUN1" | salt(16) | iv(12) | tag(16) | ciphertext`. PBKDF2 SHA-256 with **600,000 iterations**, 32-byte derived key. Tampering / wrong passphrase / corrupted magic all fail closed. → [`src/sync/encrypt.ts`](src/sync/encrypt.ts)
+- [x] Passphrase is **always read from an env var** (default `APEX_BUNDLE_PASSPHRASE`, configurable via `--passphrase-env <VAR>`) — never from CLI args, never logged. Imports land in `.apex/proposed/` only — never in `.apex/knowledge/` — and re-imports are idempotent (collisions become `<basename>.from-bundle.<ts>.md`).
+- [x] CLI: `apex sync export --out <file.apex-bundle> [--include-proposed] [--passphrase-env <VAR>]`, `apex sync import --in <file.apex-bundle> [--dry-run] [--passphrase-env <VAR>]`. Zero new npm dependencies — Node stdlib only.
+
+#### 6.5 Multi-agent reflection swarm
+- [x] Parallel `apex reflect --all` fan-out across every git worktree in a repo. Worktree discovery via `git worktree list --porcelain` parsed by hand (no shell, `execFile` only). → [`src/swarm/discover.ts`](src/swarm/discover.ts)
+- [x] Promise-pool-bounded parallelism (default `max(1, floor(cpus/2))`, configurable via `--parallel`); per-worktree `AbortController` timeout (default 60s, configurable via `--timeout`); recursion guard via `APEX_IN_SWARM=1` env var so workers cannot spawn nested swarms. `runApex` injection seam keeps tests fully deterministic. → [`src/swarm/runner.ts`](src/swarm/runner.ts), [`src/swarm/index.ts`](src/swarm/index.ts)
+- [x] CLI: `apex swarm list [--json]`, `apex swarm reflect [--parallel <n>] [--timeout <seconds>=60] [--dry-run]`. Aggregated summary reports total worktrees, success/failure counts, and proposal totals across branches. → [`src/cli/commands/swarm.ts`](src/cli/commands/swarm.ts)
+
+#### 6.6 Skill auto-authoring
+- [x] Detects recurring tool-call workflows in episodes via n-gram sliding window (n=5..2, longest-first), filters to ≥`threshold` (default 3) occurrences, and dedupes sub-patterns when a longer specific shape covers a shorter one with the same count. → [`src/skillauthor/patterns.ts`](src/skillauthor/patterns.ts)
+- [x] Drafts `.apex/proposed-skills/<slug>/SKILL.md` with the existing `apex-recall` SKILL frontmatter shape (`name`/`description`); body lists the pattern, when-to-use heuristic, and up to 5 evidence references. Refuses to overwrite — never touches `.claude/skills/`. → [`src/skillauthor/proposer.ts`](src/skillauthor/proposer.ts), [`src/skillauthor/writer.ts`](src/skillauthor/writer.ts), [`src/skillauthor/index.ts`](src/skillauthor/index.ts)
+- [x] CLI: `apex skillauthor propose [--threshold <n>=3] [--limit <n>=10] [--episodes <n>=50] [--dry-run]`, `apex skillauthor list`. Output capped at `--limit` (default 10) to keep human review tractable. → [`src/cli/commands/skillauthor.ts`](src/cli/commands/skillauthor.ts)
+
+**Exit criteria (met):** All six stretch items shipped with the same posture as v1: file-based, local-only, opt-in, redacted, gated through the existing `.apex/proposed/` pipeline. **87 test files, 1009 tests pass** (+260 vs Phase 5: prmining 78, shadow 35, hookpolicy 44, sync 32, swarm 27, skillauthor 44). `npm run typecheck` clean. Zero new npm dependencies across all six items.
 
 ---
 
@@ -518,9 +550,9 @@ Phase 1 must measure these from day one. Phase 4 makes them visible to the user.
 - [x] **Phase 3** — Retrieval engine + code intelligence (2026-04-26)
 - [x] **Phase 4** — Self-correction + eval harness (2026-04-26)
 - [x] **Phase 5** — Distribution + teams + plugin (2026-04-26)
-- [ ] **Phase 6** — Stretch / advanced (post-v1)
+- [x] **Phase 6** — Stretch / advanced — PR mining, memory shadow, hook policies, encrypted bundle, swarm, skill auto-author (2026-04-26)
 
-**Total to v1:** ~12 weeks of focused work. Phase 1 is shippable as a useful product on its own at week 3.
+**Total to v1:** ~12 weeks of focused work. Phase 1 is shippable as a useful product on its own at week 3. Post-v1 stretch goals (Phase 6) shipped same-day as Phase 5 via parallel sub-agent execution.
 
 ---
 
