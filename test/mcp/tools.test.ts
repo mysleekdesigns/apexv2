@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import {
   apexGet,
+  apexGetDecision,
   apexPropose,
   apexRecordCorrection,
   apexSearch,
@@ -38,7 +39,7 @@ describe("MCP tools", () => {
   });
 
   afterEach(() => {
-    ctx.recall.close();
+    ctx.close();
   });
 
   it("apex_search returns ranked hits with provenance", async () => {
@@ -78,6 +79,27 @@ describe("MCP tools", () => {
   it("apex_get returns null for an unknown id", async () => {
     const e = await apexGet(ctx, { entry_id: "does-not-exist" });
     expect(e).toBeNull();
+  });
+
+  it("apex_get_decision returns only decision-typed entries", async () => {
+    const e = await apexGetDecision(ctx, { entry_id: "db-postgres-pinned" });
+    expect(e).not.toBeNull();
+    expect(e?.frontmatter.type).toBe("decision");
+  });
+
+  it("apex_get_decision returns null when the id is not a decision", async () => {
+    const e = await apexGetDecision(ctx, { entry_id: "gh-pnpm-not-npm" });
+    expect(e).toBeNull();
+  });
+
+  it("createToolContext does not open SQLite until a tool is invoked", () => {
+    const fresh = fs.mkdtempSync(path.join(os.tmpdir(), "apex-mcp-lazy-"));
+    fs.mkdirSync(path.join(fresh, ".apex", "knowledge"), { recursive: true });
+    const lazyCtx = createToolContext(fresh);
+    const indexPath = path.join(fresh, ".apex", "index", "fts.sqlite");
+    expect(fs.existsSync(indexPath)).toBe(false);
+    lazyCtx.close();
+    expect(fs.existsSync(indexPath)).toBe(false);
   });
 
   it("apex_record_correction appends to _corrections.md", async () => {

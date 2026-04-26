@@ -241,15 +241,6 @@ function buildHookEntries(): Record<string, unknown[]> {
   };
 }
 
-function buildMcpServerConfig(): Record<string, unknown> {
-  return {
-    type: "stdio",
-    command: "node",
-    args: ["./node_modules/apex-cc/dist/mcp/server-bin.js"],
-    env: { CLAUDE_PROJECT_DIR: "${CLAUDE_PROJECT_DIR}" },
-  };
-}
-
 export async function isInstalled(root: string): Promise<boolean> {
   return fs.pathExists(projectPaths(root).installJson);
 }
@@ -351,9 +342,6 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
 
   // settings.json with managed hooks block.
   await writer.writeSettingsHooks(paths.settingsJson, buildHookEntries());
-
-  // .mcp.json with managed apex-mcp entry.
-  await writer.writeMcpEntry(paths.mcpJson, "apex-mcp", buildMcpServerConfig());
 
   // .apex/install.json — APEX owned, always rewritten.
   const prior = await readInstallJson(opts.root);

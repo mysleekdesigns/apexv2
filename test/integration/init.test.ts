@@ -46,7 +46,6 @@ describe("apex init (integration)", () => {
     expect(await fs.pathExists(p.claudeLocalMd)).toBe(true);
     expect(await fs.pathExists(path.join(p.rulesDir, "00-stack.md"))).toBe(true);
     expect(await fs.pathExists(p.settingsJson)).toBe(true);
-    expect(await fs.pathExists(p.mcpJson)).toBe(true);
     expect(await fs.pathExists(p.configToml)).toBe(true);
     expect(await fs.pathExists(p.apexGitignore)).toBe(true);
     expect(await fs.pathExists(path.join(p.knowledgeDir, "decisions"))).toBe(true);
@@ -81,11 +80,9 @@ describe("apex init (integration)", () => {
     const sessionStart = hooks["SessionStart"] as unknown[];
     expect((sessionStart?.[0] as Record<string, unknown>)["_apex_managed"]).toBe(true);
 
-    // .mcp.json registers apex-mcp (per specs/install.md §8).
-    const mcp = (await fs.readJson(p.mcpJson)) as Record<string, unknown>;
-    const servers = mcp["mcpServers"] as Record<string, unknown>;
-    expect(servers["apex-mcp"]).toBeDefined();
-    expect((servers["apex-mcp"] as Record<string, unknown>)["_apex_managed"]).toBe(true);
+    // .mcp.json registration is wired through registerApexMcp in `apex init`;
+    // runInstall (called directly here) does not write .mcp.json. See
+    // test/mcp/registration.test.ts for the registration helper coverage.
 
     // Root .gitignore contains apex managed block.
     const gi = await fs.readFile(p.rootGitignore, "utf8").catch(() => "");
