@@ -57,6 +57,14 @@ async function readTemplate(name: string): Promise<string | null> {
   }
 }
 
+function stripManagedWrapper(body: string): string {
+  // If the template ships with its own <!-- apex:begin --> / <!-- apex:end -->
+  // wrapper, strip it so writeMarkdownManaged doesn't double-wrap.
+  return body
+    .replace(/^\s*<!--\s*apex:begin\s*-->\s*\n?/, "")
+    .replace(/\n?<!--\s*apex:end\s*-->\s*$/, "");
+}
+
 function buildVars(
   detection: StackDetection,
   apexVersion: string,
@@ -224,7 +232,7 @@ function buildHookEntries(): Record<string, unknown[]> {
   return {
     SessionStart: [mk("SessionStart", "on-session-start.sh")],
     UserPromptSubmit: [mk("UserPromptSubmit", "on-prompt-submit.sh")],
-    PostToolUse: [mk("PostToolUse", "on-post-tool.sh", "Bash|Edit|Write|Read")],
+    PostToolUse: [mk("PostToolUse", "on-post-tool.sh", "Bash")],
     PostToolUseFailure: [mk("PostToolUseFailure", "on-post-tool-failure.sh")],
     PreCompact: [mk("PreCompact", "on-pre-compact.sh")],
     SessionEnd: [mk("SessionEnd", "on-session-end.sh")],
@@ -235,8 +243,8 @@ function buildMcpServerConfig(): Record<string, unknown> {
   return {
     type: "stdio",
     command: "node",
-    args: ["${CLAUDE_PROJECT_DIR}/.apex/mcp/server.js"],
-    env: { APEX_PROJECT_DIR: "${CLAUDE_PROJECT_DIR}" },
+    args: ["./node_modules/apex-cc/dist/mcp/server-bin.js"],
+    env: { CLAUDE_PROJECT_DIR: "${CLAUDE_PROJECT_DIR}" },
   };
 }
 
@@ -273,30 +281,33 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
   await writer.ensureDir(paths.agentsDir);
   await writer.ensureDir(paths.hooksDir);
 
-  // CLAUDE.md (managed section).
-  const claudeMdTpl = await readTemplate("CLAUDE.md.tpl");
+  // CLAUDE.md (managed section). Template at templates/CLAUDE.md.tmpl from
+  // the scaffold workstream; falls back to inline stub if not yet shipped.
+  // The template ships with its own outer apex:begin/end markers for human
+  // readability — strip them so writeMarkdownManaged doesn't double-wrap.
+  const claudeMdTpl = await readTemplate("CLAUDE.md.tmpl");
   const claudeManagedBody = claudeMdTpl
-    ? applyVars(claudeMdTpl, vars)
+    ? stripManagedWrapper(applyVars(claudeMdTpl, vars))
     : fallbackClaudeMdManaged(vars);
   await writer.writeMarkdownManaged(paths.claudeMd, claudeManagedBody);
 
   // CLAUDE.local.md (user-only, written once).
   await writer.writeUserOnce(paths.claudeLocalMd, "");
 
-  // Rules: 00-stack.md is fully apex-owned; 10/20 are stubs.
-  const stackTpl = await readTemplate(".claude/rules/00-stack.md.tpl");
+  // Rules: 00-stack.md is templated and fully apex-owned; 10/20 are static stubs.
+  const stackTpl = await readTemplate("claude/rules/00-stack.md.tmpl");
   const stackContent = stackTpl ? applyVars(stackTpl, vars) : fallbackStackRule(detection, vars);
   await writer.writeOwned(path.join(paths.rulesDir, "00-stack.md"), stackContent);
 
   for (const rule of RULE_TEMPLATES) {
-    const tpl = await readTemplate(`.claude/rules/${rule}.tpl`);
+    const tpl = await readTemplate(`claude/rules/${rule}`);
     const content = tpl ? applyVars(tpl, vars) : fallbackRuleStub(rule);
     await writer.writeOwned(path.join(paths.rulesDir, rule), content);
   }
 
   // Skills.
   for (const skill of SKILL_TEMPLATES) {
-    const tpl = await readTemplate(`.claude/skills/${skill}/SKILL.md.tpl`);
+    const tpl = await readTemplate(`claude/skills/${skill}/SKILL.md`);
     const dest = path.join(paths.skillsDir, skill, "SKILL.md");
     if (tpl) {
       await writer.writeOwned(dest, applyVars(tpl, vars));
@@ -308,7 +319,7 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
 
   // Agents.
   for (const agent of AGENT_TEMPLATES) {
-    const tpl = await readTemplate(`.claude/agents/${agent}.md.tpl`);
+    const tpl = await readTemplate(`claude/agents/${agent}.md`);
     const dest = path.join(paths.agentsDir, `${agent}.md`);
     if (tpl) {
       await writer.writeOwned(dest, applyVars(tpl, vars));
@@ -320,7 +331,7 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
 
   // Hooks.
   for (const hook of HOOK_SCRIPTS) {
-    const tpl = await readTemplate(`.claude/hooks/${hook}.tpl`);
+    const tpl = await readTemplate(`claude/hooks/${hook}`);
     const dest = path.join(paths.hooksDir, hook);
     const content = tpl ? applyVars(tpl, vars) : fallbackHook(hook);
     await writer.writeOwned(dest, content, { dryRun: opts.dryRun, executable: true });
@@ -329,8 +340,8 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
   // settings.json with managed hooks block.
   await writer.writeSettingsHooks(paths.settingsJson, buildHookEntries());
 
-  // .mcp.json with managed apex entry.
-  await writer.writeMcpEntry(paths.mcpJson, "apex", buildMcpServerConfig());
+  // .mcp.json with managed apex-mcp entry.
+  await writer.writeMcpEntry(paths.mcpJson, "apex-mcp", buildMcpServerConfig());
 
   // .apex/install.json — APEX owned, always rewritten.
   const prior = await readInstallJson(opts.root);
@@ -404,7 +415,7 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
   };
 }
 
-export function formatStatsBanner(result: InstallResult): string {
+export function formatStatsBanner(result: InstallResult, proposedCount = 0): string {
   const d = result.detection;
   const stackParts: string[] = [];
   if (d.language !== "unknown") stackParts.push(d.language);
@@ -416,11 +427,14 @@ export function formatStatsBanner(result: InstallResult): string {
   stackParts.push(...d.ci);
 
   const stack = stackParts.length > 0 ? stackParts.join(" / ") : "unknown stack";
+  const proposedLine = proposedCount > 0
+    ? `  knowledge:    ${proposedCount} proposals in .apex/proposed/ (review with \`apex review\`)`
+    : `  knowledge:    0 entries (archaeologist found no signals to bootstrap)`;
   return [
     kleur.green().bold("APEX installed."),
     `  stack:        ${stack}`,
     `  hooks:        ${result.hookCount} installed in .claude/settings.json`,
-    `  knowledge:    0 entries (archaeologist will run on first session)`,
+    proposedLine,
     `  next session: APEX will load at SessionStart automatically.`,
     "",
     `Run ${kleur.bold("apex status")} for details. ${kleur.bold("apex uninstall")} removes everything.`,

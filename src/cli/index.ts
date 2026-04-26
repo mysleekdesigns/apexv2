@@ -8,32 +8,59 @@ import { registerUninstall } from "./commands/uninstall.js";
 
 const APEX_VERSION = process.env["APEX_VERSION"] ?? "0.1.0-phase1";
 
-async function tryRegister(
-  program: Command,
-  name: string,
-  modulePath: string,
-  registerFnName: string,
-): Promise<void> {
+async function registerSearch(program: Command): Promise<void> {
   try {
-    const mod = (await import(modulePath)) as Record<string, unknown>;
-    const fn = mod[registerFnName];
-    if (typeof fn === "function") {
-      (fn as (p: Command) => void)(program);
-      return;
-    }
+    const { runSearch } = (await import("./commands/search.js")) as {
+      runSearch: (opts: {
+        query: string;
+        root?: string;
+        type?: string;
+        k?: number;
+        json?: boolean;
+      }) => Promise<string>;
+    };
+    program
+      .command("search <query>")
+      .description("Search the APEX knowledge base")
+      .option("--type <type>", "Filter by entry type (decision|pattern|gotcha|convention)")
+      .option("--k <n>", "Number of results to return", (v) => parseInt(v, 10), 5)
+      .option("--json", "Emit JSON")
+      .option("--cwd <path>", "Run as if invoked from <path>")
+      .action(async (query: string, opts: Record<string, unknown>) => {
+        const out = await runSearch({
+          query,
+          root: opts["cwd"] as string | undefined,
+          type: opts["type"] as string | undefined,
+          k: opts["k"] as number | undefined,
+          json: Boolean(opts["json"]),
+        });
+        process.stdout.write(out + (out.endsWith("\n") ? "" : "\n"));
+      });
   } catch {
-    // fall through to stub.
+    // module missing; skip silently.
   }
-  program
-    .command(name)
-    .description(`(${name}: command unavailable in this build)`)
-    .allowUnknownOption(true)
-    .action(() => {
-      process.stderr.write(
-        kleur.yellow(`apex ${name}: command unavailable in this build\n`),
-      );
-      process.exit(0);
-    });
+}
+
+async function registerHook(program: Command): Promise<void> {
+  try {
+    const { registerHookCommand } = (await import("./commands/hook.js")) as {
+      registerHookCommand: (p: Command) => Command;
+    };
+    registerHookCommand(program);
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerArchaeologist(program: Command): Promise<void> {
+  try {
+    const { archaeologistCommand } = (await import(
+      "./commands/archaeologist.js"
+    )) as { archaeologistCommand: () => Command };
+    program.addCommand(archaeologistCommand());
+  } catch {
+    // module missing; skip silently.
+  }
 }
 
 async function main(): Promise<void> {
@@ -48,14 +75,9 @@ async function main(): Promise<void> {
   registerStatus(program);
   registerUninstall(program);
 
-  await tryRegister(program, "search", "./commands/search.js", "registerSearch");
-  await tryRegister(program, "hook", "./commands/hook.js", "registerHook");
-  await tryRegister(
-    program,
-    "archaeologist",
-    "./commands/archaeologist.js",
-    "registerArchaeologist",
-  );
+  await registerSearch(program);
+  await registerHook(program);
+  await registerArchaeologist(program);
 
   await program.parseAsync(process.argv);
 }

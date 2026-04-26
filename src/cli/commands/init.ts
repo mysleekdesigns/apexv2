@@ -111,7 +111,20 @@ export async function runInit(flags: InitFlags): Promise<number> {
       return 0;
     }
 
-    process.stdout.write(`\n${formatStatsBanner(result)}\n`);
+    let proposedCount = 0;
+    try {
+      const { runArchaeologist } = await import("../../archaeologist/index.js");
+      const report = await runArchaeologist(root, { dryRun: false });
+      proposedCount = report.proposalsWritten.length;
+    } catch (err) {
+      process.stderr.write(
+        kleur.yellow(
+          `archaeologist skipped: ${(err as Error).message}\n`,
+        ),
+      );
+    }
+
+    process.stdout.write(`\n${formatStatsBanner(result, proposedCount)}\n`);
     process.stdout.write(
       kleur.dim(
         `Claude Code minimum version: ${CLAUDE_CODE_MIN_VERSION}. apex v${APEX_VERSION}.\n`,

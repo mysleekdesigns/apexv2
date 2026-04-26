@@ -81,11 +81,11 @@ describe("apex init (integration)", () => {
     const sessionStart = hooks["SessionStart"] as unknown[];
     expect((sessionStart?.[0] as Record<string, unknown>)["_apex_managed"]).toBe(true);
 
-    // .mcp.json registers apex.
+    // .mcp.json registers apex-mcp (per specs/install.md §8).
     const mcp = (await fs.readJson(p.mcpJson)) as Record<string, unknown>;
     const servers = mcp["mcpServers"] as Record<string, unknown>;
-    expect(servers["apex"]).toBeDefined();
-    expect((servers["apex"] as Record<string, unknown>)["_apex_managed"]).toBe(true);
+    expect(servers["apex-mcp"]).toBeDefined();
+    expect((servers["apex-mcp"] as Record<string, unknown>)["_apex_managed"]).toBe(true);
 
     // Root .gitignore contains apex managed block.
     const gi = await fs.readFile(p.rootGitignore, "utf8").catch(() => "");
