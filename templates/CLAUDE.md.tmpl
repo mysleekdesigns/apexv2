@@ -1,0 +1,84 @@
+<!-- apex:begin -->
+<!-- This file is partially managed by APEX. Sections wrapped in
+     `<!-- apex:section:NAME -->` ... `<!-- apex:section:NAME:end -->`
+     are auto-rewritten on `apex upgrade`. Anything outside these markers
+     is yours and will be preserved verbatim.
+
+     APEX version: {{APEX_VERSION}}
+     Installed:    {{INSTALL_DATE}}
+-->
+
+# Project Memory
+
+This file is the entry point Claude Code reads at session start. It is intentionally short — it indexes the rules in `.claude/rules/` rather than inlining everything. Keep it under 200 lines.
+
+<!-- apex:section:imports -->
+## Active Rules
+
+@.claude/rules/00-stack.md
+@.claude/rules/10-conventions.md
+@.claude/rules/20-gotchas.md
+<!-- apex:section:imports:end -->
+
+<!-- apex:section:stack -->
+## Project Stack
+
+- **Language:** {{STACK_LANGUAGE}}
+- **Frameworks:** {{STACK_FRAMEWORKS}}
+- **Package manager:** {{STACK_PACKAGE_MANAGER}}
+- **Test runner:** {{STACK_TEST_RUNNER}}
+- **Lint:** {{STACK_LINT}}
+- **Format:** {{STACK_FORMAT}}
+- **CI:** {{STACK_CI}}
+
+Detected automatically by APEX. The full breakdown lives in `.claude/rules/00-stack.md` and `.apex/knowledge/conventions/`.
+<!-- apex:section:stack:end -->
+
+<!-- apex:section:commands -->
+## Common Commands
+
+{{COMMON_COMMANDS}}
+
+Prefer these over equivalents from other ecosystems. If a command here disagrees with what the repo actually uses, correct it in chat — APEX captures the correction and updates this section on the next `apex upgrade`.
+<!-- apex:section:commands:end -->
+
+<!-- apex:section:layout -->
+## Where Things Live
+
+- `CLAUDE.md` — this file. Index-style; do not inline large rule blocks here.
+- `CLAUDE.local.md` — personal, gitignored. Use it for per-developer preferences.
+- `.claude/rules/` — scoped rules imported above. APEX writes `00-stack.md`, `10-conventions.md`, `20-gotchas.md`. Add your own as `30-*.md`, `40-*.md`, etc.
+- `.claude/skills/apex-*/` — APEX-managed skills (recall, reflect, review).
+- `.claude/agents/apex-*.md` — APEX subagents (reflector, curator, archaeologist).
+- `.claude/hooks/` — shell scripts the hooks call. Edit at your own risk; replaced on upgrade.
+- `.claude/settings.json` — hooks + permissions. APEX-managed block delimited inside the JSON.
+- `.mcp.json` — MCP server registry, including `apex-mcp`.
+- `.apex/knowledge/` — committed: decisions, patterns, gotchas, conventions. Reviewable like any other code.
+- `.apex/proposed/` — committed: pending knowledge from the archaeologist/reflector, awaiting human approval.
+- `.apex/episodes/` — gitignored: per-session transcripts, redacted at write time.
+- `.apex/index/`, `.apex/metrics/` — gitignored, rebuildable.
+<!-- apex:section:layout:end -->
+
+<!-- apex:section:rules-of-the-road -->
+## Rules of the Road
+
+These are the small set of always-true rules. Project-specific conventions live in `.claude/rules/10-conventions.md`; recurring traps live in `.claude/rules/20-gotchas.md`.
+
+1. **Use the project's package manager.** See "Common Commands" above. Never substitute a different one.
+2. **Run the project's test runner before declaring work done.** Tests are the strongest signal APEX has — when they pass, knowledge is validated; when they fail, the failure is captured for reflection.
+3. **Prefer reading over guessing.** Use `Read`, `Grep`, and `Glob` to confirm structure before editing. The `apex-recall` skill surfaces past decisions — use it instead of re-deriving them.
+4. **Cite evidence.** When you propose a non-trivial change, point to the file, test, or prior decision that justifies it. APEX records evidence-backed changes with high confidence and unsupported ones with low confidence.
+5. **Respect APEX-managed sections.** Anything between `<!-- apex:begin -->` and `<!-- apex:end -->`, or between `<!-- apex:section:NAME -->` markers, is rewritten on upgrade. Add your own content outside those blocks.
+6. **Corrections are first-class.** If the user says "no, do X instead", treat it as a durable signal — APEX persists the correction so the same mistake is not repeated.
+7. **Secrets never enter knowledge or episodes.** The redactor strips obvious patterns at write time, but do not paste API keys, tokens, or `.env` contents into chat.
+<!-- apex:section:rules-of-the-road:end -->
+
+<!-- apex:section:retrieval -->
+## Recalling Past Knowledge
+
+When a task looks similar to something this project has dealt with before, invoke the `apex-recall` skill (or call the `apex_search` MCP tool) before writing code. Knowledge entries cite their source file and last-validated date — trust recent, evidence-backed entries over your own priors.
+<!-- apex:section:retrieval:end -->
+
+<!-- apex:end -->
+
+<!-- Anything below this line is yours. APEX will not touch it. -->

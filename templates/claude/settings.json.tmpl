@@ -1,0 +1,48 @@
+{
+  "apex_settings_version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "_apex_managed": true,
+        "command": ".claude/hooks/on-session-start.sh",
+        "timeout_ms": 1000
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "_apex_managed": true,
+        "command": ".claude/hooks/on-prompt-submit.sh",
+        "timeout_ms": 1000
+      }
+    ],
+    "PostToolUse": [
+      {
+        "_apex_managed": true,
+        "matcher": "Bash",
+        "command": ".claude/hooks/on-post-tool.sh",
+        "timeout_ms": 1000
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "_apex_managed": true,
+        "command": ".claude/hooks/on-post-tool-failure.sh",
+        "timeout_ms": 1000
+      }
+    ],
+    "PreCompact": [
+      {
+        "_apex_managed": true,
+        "command": ".claude/hooks/on-pre-compact.sh",
+        "timeout_ms": 1000
+      }
+    ],
+    "SessionEnd": [
+      {
+        "_apex_managed": true,
+        "command": ".claude/hooks/on-session-end.sh",
+        "timeout_ms": 5000
+      }
+    ]
+  }
+}

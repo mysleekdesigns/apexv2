@@ -1,0 +1,45 @@
+{
+  "name": "apex-cc",
+  "version": "0.1.0-phase1",
+  "description": "APEX (Adaptive Project Experience) — self-learning project intelligence layer for Claude Code",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "apex": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "better-sqlite3": "^11.3.0",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "gray-matter": "^4.0.3",
+    "kleur": "^4.1.5",
+    "prompts": "^2.4.2",
+    "smol-toml": "^1.3.1",
+    "yaml": "^2.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.7.0",
+    "@types/prompts": "^2.4.9",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

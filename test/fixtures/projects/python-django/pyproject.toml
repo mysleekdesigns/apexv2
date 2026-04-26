@@ -1,0 +1,13 @@
+[project]
+name = "fixture-django"
+version = "0.0.0"
+dependencies = [
+  "django>=5",
+  "pydantic>=2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
