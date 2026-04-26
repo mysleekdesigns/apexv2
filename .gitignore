@@ -1,0 +1,331 @@
+# =============================================================================
+# Secrets & local config — NEVER commit
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.sample
+.envrc
+.mcp.json
+.mcp.local.json
+secrets/
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+.npmrc
+!.npmrc.example
+
+# =============================================================================
+# Claude Code local state (keep team-shared config, ignore personal/transient)
+# =============================================================================
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/.credentials.json
+.claude/projects/
+.claude/statsig/
+.claude/todos/
+.claude/shell-snapshots/
+
+# =============================================================================
+# APEX (per PRD §7.1) — knowledge is committed, transient state is not
+# =============================================================================
+.apex/episodes/
+.apex/index/
+.apex/metrics/
+.apex/cache/
+
+# =============================================================================
+# Project-local working dirs
+# =============================================================================
+cache/
+jobs/
+snapshots/
+webhooks/
+tmp/
+temp/
+.tmp/
+.cache/
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =============================================================================
+# Node.js
+# =============================================================================
+node_modules/
+jspm_packages/
+bower_components/
+.pnp
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.npm
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Build output
+dist/
+build/
+out/
+lib/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+.docusaurus/
+.vuepress/dist
+.serverless/
+.fusebox/
+
+# Tooling caches
+.parcel-cache/
+.turbo/
+.rollup.cache/
+.vite/
+.swc/
+.webpack/
+.rpt2_cache/
+.rts2_cache_*/
+
+# Hosting platforms
+.vercel/
+.netlify/
+.firebase/
+.wrangler/
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual envs
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.cache
+htmlcov/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# pdm / poetry / pipenv
+.pdm.toml
+.pdm-python
+.pdm-build/
+__pypackages__/
+
+# =============================================================================
+# Databases & data files
+# =============================================================================
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db
+*.db-journal
+*.lance/
+.duckdb/
+dump.rdb
+
+# =============================================================================
+# OS — macOS
+# =============================================================================
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+Icon
+
+# =============================================================================
+# OS — Windows
+# =============================================================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+[Dd]esktop.ini
+
+# =============================================================================
+# OS — Linux
+# =============================================================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Editors & IDEs
+# =============================================================================
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+.ionide/
+
+# JetBrains (IntelliJ, WebStorm, PyCharm, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+
+# Vim
+*.swp
+*.swo
+*.swn
+*.swm
+Session.vim
+.netrwhist
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+.\#*
+.org-id-locations
+*_archive
+.dir-locals.el
+auto-save-list
+tramp
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Eclipse
+.metadata
+.classpath
+.project
+.settings/
+bin/
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcscmblueprint
+*.xccheckout
+
+# Cursor
+.cursor/
+.cursorignore
+.cursorrules.local
+
+# Zed
+.zed/
+
+# =============================================================================
+# Misc tooling
+# =============================================================================
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+.vagrant/
+.docker/
+
+# =============================================================================
+# Archives & binaries (usually shouldn't be committed)
+# =============================================================================
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.tgz
