@@ -1,0 +1,13 @@
+id = "nextjs"
+version = "1.0.0"
+title = "Next.js starter pack"
+description = "Curated patterns, gotchas, and conventions for Next.js (App Router-first) projects."
+stack = "nextjs"
+applies_to_default = "team"
+
+[entry_counts]
+total = 5
+decisions = 1
+patterns = 1
+gotchas = 2
+conventions = 1

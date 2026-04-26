@@ -1,0 +1,13 @@
+id = "rails"
+version = "1.0.0"
+title = "Rails starter pack"
+description = "Curated patterns, gotchas, and conventions for Ruby on Rails projects."
+stack = "rails"
+applies_to_default = "team"
+
+[entry_counts]
+total = 5
+decisions = 1
+patterns = 1
+gotchas = 2
+conventions = 1

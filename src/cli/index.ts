@@ -161,6 +161,78 @@ async function registerCalibrate(program: Command): Promise<void> {
   }
 }
 
+async function registerPlugin(program: Command): Promise<void> {
+  try {
+    const { pluginCommand } = (await import("./commands/plugin.js")) as {
+      pluginCommand: () => Command;
+    };
+    program.addCommand(pluginCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerReview(program: Command): Promise<void> {
+  try {
+    const { reviewCommand } = (await import("./commands/review.js")) as {
+      reviewCommand: () => Command;
+    };
+    program.addCommand(reviewCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerInstall(program: Command): Promise<void> {
+  try {
+    const { installCommand } = (await import("./commands/install.js")) as {
+      installCommand: () => Command;
+    };
+    program.addCommand(installCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerLink(program: Command): Promise<void> {
+  try {
+    const { linkCommand, unlinkCommand } = (await import("./commands/link.js")) as {
+      linkCommand: () => Command;
+      unlinkCommand: () => Command;
+    };
+    program.addCommand(linkCommand());
+    program.addCommand(unlinkCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerAudit(program: Command): Promise<void> {
+  try {
+    const { auditCommand } = (await import("./commands/audit.js")) as {
+      auditCommand: () => Command;
+    };
+    program.addCommand(auditCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerCommitKnowledge(program: Command): Promise<void> {
+  try {
+    const { commitKnowledgeCommand, verifyKnowledgeCommand } = (await import(
+      "./commands/commit-knowledge.js"
+    )) as {
+      commitKnowledgeCommand: () => Command;
+      verifyKnowledgeCommand: () => Command;
+    };
+    program.addCommand(commitKnowledgeCommand());
+    program.addCommand(verifyKnowledgeCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -184,6 +256,12 @@ async function main(): Promise<void> {
   await registerCodeindex(program);
   await registerEval(program);
   await registerCalibrate(program);
+  await registerPlugin(program);
+  await registerReview(program);
+  await registerInstall(program);
+  await registerLink(program);
+  await registerAudit(program);
+  await registerCommitKnowledge(program);
 
   await program.parseAsync(process.argv);
 }

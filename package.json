@@ -1,6 +1,6 @@
 {
   "name": "apex-cc",
-  "version": "0.1.0-phase4",
+  "version": "0.1.0-phase5",
   "description": "APEX (Adaptive Project Experience) — self-learning project intelligence layer for Claude Code",
   "license": "MIT",
   "type": "module",

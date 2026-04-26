@@ -155,6 +155,36 @@ export const PATTERNS: RedactorPattern[] = [
       `${cue}${sep}${RED("generic-api-key")}`,
     severity: "block",
   },
+
+  // -------------------------------------------------------------------------
+  // Phase 5.5 additions — common-secret patterns with stable, low-FP signatures
+  // (per PRD §5.5; the comment block above reserves this slot for these).
+  // -------------------------------------------------------------------------
+  {
+    name: "npm-token",
+    // npm automation/auth tokens: `npm_` + 36 base62 chars. Single fixed shape.
+    regex: /\bnpm_[A-Za-z0-9]{36}\b/g,
+    replacement: RED("npm-token"),
+    severity: "block",
+  },
+  {
+    name: "heroku-api-key",
+    // Heroku's modern API keys: `HRKU-` followed by hex/dash chars.
+    regex: /\bHRKU-[A-Fa-f0-9][A-Fa-f0-9-]{8,}\b/g,
+    replacement: RED("heroku-api-key"),
+    severity: "block",
+  },
+  {
+    name: "azure-client-secret",
+    // Azure AD client secret in a connection-string-style assignment. Match the
+    // cue + separator + 34+ chars from the secret's character set. Replace just
+    // the value so the cue stays visible — same shape as `env-assignment`.
+    regex:
+      /\b(client[_\-]?secret)(["'\s:=]+)([A-Za-z0-9~._\-]{34,})\b/gi,
+    replacement: (_m, cue: string, sep: string, _val: string) =>
+      `${cue}${sep}${RED("azure-client-secret")}`,
+    severity: "block",
+  },
 ];
 
 /** Just the names, in detection order. */
