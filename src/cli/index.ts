@@ -96,6 +96,17 @@ async function registerCurate(program: Command): Promise<void> {
   }
 }
 
+async function registerGraph(program: Command): Promise<void> {
+  try {
+    const { graphCommand } = (await import("./commands/graph.js")) as {
+      graphCommand: () => Command;
+    };
+    program.addCommand(graphCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -114,6 +125,7 @@ async function main(): Promise<void> {
   await registerReflect(program);
   await registerPromote(program);
   await registerCurate(program);
+  await registerGraph(program);
 
   await program.parseAsync(process.argv);
 }

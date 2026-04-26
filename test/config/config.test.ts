@@ -131,6 +131,7 @@ describe("saveConfig + loadConfig round-trip", () => {
         require_no_conflict: false,
         min_confidence: "medium",
       },
+      graph: { enabled: true },
     };
     await saveConfig(root, toSave);
     const loaded = await loadConfig(root);
@@ -147,6 +148,7 @@ describe("saveConfig + loadConfig round-trip", () => {
         require_no_conflict: true,
         min_confidence: "low",
       },
+      graph: { enabled: false },
     };
     await saveConfig(root, toSave);
     const loaded = await loadConfig(root);
