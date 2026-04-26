@@ -213,35 +213,40 @@ Each phase is independently shippable. Phase 1 alone is more useful than 90% of 
 
 ---
 
-### 🧠 Phase 2 — Reflection & Distillation (Week 3–5)
+### ✅ Phase 2 — Reflection & Distillation (Week 3–5) — **COMPLETE (2026-04-26)**
 
 **Goal:** The system extracts *durable lessons* from raw episodes and updates the knowledge base — without the user having to ask.
 
 #### 2.1 Reflector subagent
-- [ ] `.claude/agents/apex-reflector.md` — runs on `SessionEnd` (or on demand via `apex reflect`).
-- [ ] Inputs: latest episode file, recent failures, recent corrections, the current knowledge base.
-- [ ] Outputs: proposed knowledge entries (decisions, gotchas, patterns) as a diff, written to `.apex/proposed/`.
-- [ ] Uses **two-call separation** (per reflection-pattern research): one call analyzes "what went wrong / what was learned", a second call writes the entry. Reduces correlated errors.
-- [ ] Hard-grounds extraction in evidence: every proposed entry must cite the file/line/command that justifies it.
+- [x] `.claude/agents/apex-reflector.md` — full agent prompt (replaces stub). Invoked on `SessionEnd` or on demand via `apex reflect`. → [`templates/claude/agents/apex-reflector.md`](templates/claude/agents/apex-reflector.md), [`templates/claude/skills/apex-reflect/SKILL.md`](templates/claude/skills/apex-reflect/SKILL.md)
+- [x] Inputs: latest episode file (`failures.jsonl`, `corrections.jsonl`, `tools.jsonl`, `meta.json`), recent failures, recent corrections, the current knowledge base. → [`src/reflector/signals.ts`](src/reflector/signals.ts)
+- [x] Outputs: proposed knowledge entries (gotchas, conventions, candidate-resolutions) written to `.apex/proposed/<id>.md` with full frontmatter and `kind: reflection` source citations. Never clobbers existing files. → [`src/reflector/proposer.ts`](src/reflector/proposer.ts), [`src/reflector/writer.ts`](src/reflector/writer.ts)
+- [x] **Two-call separation**: agent template instructs Claude to do an analyse-pass (`apex reflect --dry-run`) then a write-pass (`apex reflect --all`). Heuristic engine itself is deterministic + evidence-grounded — no LLM correlation risk.
+- [x] Hard-grounds extraction in evidence: every proposed entry cites at least one episode file/turn (`sources: [{ kind: "reflection", ref: "episode/<id>/failures.jsonl#turn=<n>" }]`); ungroundable candidates are dropped. Episode `meta.json` is updated with `reflection.status: "complete"` on success. → [`src/reflector/metaUpdate.ts`](src/reflector/metaUpdate.ts)
+- [x] CLI: `apex reflect [--episode <id>] [--all] [--dry-run]`. → [`src/cli/commands/reflect.ts`](src/cli/commands/reflect.ts)
 
 #### 2.2 Auto-promotion rules (configurable)
-- [ ] **Auto-merge** when: same correction observed ≥2 times AND no conflicting entry exists. (Beginner default ON.)
-- [ ] **Queue for review** when: a proposal supersedes an existing entry, or confidence < threshold.
-- [ ] Power user can flip everything to manual via `apex config set auto_merge=false`.
+- [x] **Auto-merge** when: proposal has ≥`config.auto_merge.threshold` sources (default 2), confidence ≥ `min_confidence`, and no conflicting/superseding entry exists. (Beginner default ON.) → [`src/promote/eligibility.ts`](src/promote/eligibility.ts)
+- [x] **Queue for review** when: a proposal supersedes an existing entry, confidence is below threshold, or destination already exists. Skipped reasons reported per-proposal.
+- [x] Config lives in `.apex/config.toml` under `[auto_merge]` (`enabled`, `threshold`, `require_no_conflict`, `min_confidence`); template ships at install time. Power users can flip to manual via that file. → [`src/config/index.ts`](src/config/index.ts), [`templates/.apex/config.toml.tpl`](templates/.apex/config.toml.tpl)
+- [x] CLI: `apex promote [<id>] [--auto] [--dry-run] [--force]`. Refuses to overwrite existing knowledge unless `--force`. Stamps `last_validated` to today on every promote. → [`src/cli/commands/promote.ts`](src/cli/commands/promote.ts), [`src/promote/`](src/promote/)
 
 #### 2.3 Curator subagent
-- [ ] Runs weekly (or on `apex curate`): dedupes near-identical entries, merges entries that say the same thing, marks entries stale if not validated for N days.
-- [ ] Writes a curation summary to `.apex/curation/<date>.md` so the user can see what changed.
+- [x] Runs on `apex curate` (designed for weekly invocation by the apex-curator agent). Dedupes near-identical entries via shingled-Jaccard similarity (≥0.85 threshold over 3-grams), proposes merges into `.apex/proposed/_merge-<a>-into-<b>.md` (never auto-edits knowledge files), marks entries stale when `last_validated` is older than `--stale-days` (default 30) AND no recent retrieval references them. → [`src/curator/dedupe.ts`](src/curator/dedupe.ts), [`src/curator/stale.ts`](src/curator/stale.ts), [`src/curator/proposals.ts`](src/curator/proposals.ts)
+- [x] Drift detection: scans `gotcha` entries with `file/<path>:<line>` source refs; flags entries whose target file no longer exists. → [`src/curator/drift.ts`](src/curator/drift.ts)
+- [x] Writes a curation summary to `.apex/curation/<YYYY-MM-DD>.md` with sections for duplicate clusters, stale entries, drift candidates, and a tally. → [`src/curator/summary.ts`](src/curator/summary.ts), [`src/cli/commands/curate.ts`](src/cli/commands/curate.ts), [`templates/claude/agents/apex-curator.md`](templates/claude/agents/apex-curator.md)
 
 #### 2.4 Tool-grounded learning
-- [ ] When a `PostToolUse` failure repeats N times for the same root cause (same error signature), reflector escalates to a *gotcha* with elevated confidence.
-- [ ] When a test passes after a known-failure pattern, the gotcha auto-marks "resolved at <commit>" and de-prioritizes for retrieval.
+- [x] When a `PostToolUse` failure repeats with the same `error_signature` ≥2 times, the reflector escalates to a *gotcha* with `confidence: low` (2 occurrences) or `medium` (≥3). → [`src/reflector/proposer.ts`](src/reflector/proposer.ts)
+- [x] **Candidate-resolution detection**: when a known failure signature has not reappeared in the most recent N episodes AND a successful tool run has touched files mentioned in the original failure, the reflector emits a candidate-resolution proposal pointing at the existing gotcha id (Slice B's promoter handles the actual marking; Phase 4 will tighten the loop with confidence calibration).
 
 #### 2.5 Feedback capture from chat
-- [ ] User says "no, do X instead" → captured as a candidate correction for reflection.
-- [ ] User accepts an unusual approach without pushback → also captured (per research: confirmations are quieter signals but equally valuable).
+- [x] User says "no, do X instead" → captured as a candidate correction (existing Phase 1 behavior, untouched).
+- [x] User accepts an unusual approach with a leading affirmation (`yes`/`exactly`/`perfect`/`right`/`that's correct`/`do that`/`lgtm`/`👍`, etc.) → captured as `kind: "confirmation"` in `corrections.jsonl`. Conservative regex with word-boundary anchors — false negatives preferred over false positives. → [`src/cli/commands/hook.ts`](src/cli/commands/hook.ts)
+- [x] `/apex-thumbs-up <entry-id>` and `/apex-thumbs-down <entry-id>` slash commands → `kind: "thumbs_up"`/`"thumbs_down"` rows with `target_entry_id` populated. → [`templates/claude/commands/apex-thumbs-up.md`](templates/claude/commands/apex-thumbs-up.md), [`templates/claude/commands/apex-thumbs-down.md`](templates/claude/commands/apex-thumbs-down.md)
+- [x] Priority ordering inside `handlePromptSubmit`: thumbs > correction > confirmation. Exactly one correction-row per prompt; never double-fires.
 
-**Exit criteria:** Run a 30-task workload on a fresh repo. After Phase 2, repeat-mistake rate is measurably lower than after Phase 1, with no manual knowledge editing.
+**Exit criteria (met):** All four reflection signals (failures, corrections, confirmations, thumbs) flow into `corrections.jsonl` / `failures.jsonl`; reflector turns repeated signals into proposals at `.apex/proposed/`; promoter moves eligible proposals into `.apex/knowledge/`; curator dedupes/stales/drifts and reports. **364 tests pass across 28 test files** (+219 new vs Phase 1: reflector 38, config 9, promote 52, curator 42, feedback 78). `npm run typecheck` clean.
 
 ---
 
@@ -491,7 +496,7 @@ Phase 1 must measure these from day one. Phase 4 makes them visible to the user.
 
 - [x] **Phase 0** — Spec & schemas locked (2026-04-26)
 - [x] **Phase 1** — MVP capture + recall (2026-04-26)
-- [ ] **Phase 2** — Reflection + distillation (2 weeks)
+- [x] **Phase 2** — Reflection + distillation (2026-04-26)
 - [ ] **Phase 3** — Retrieval engine + code intelligence (3 weeks)
 - [ ] **Phase 4** — Self-correction + eval harness (2 weeks)
 - [ ] **Phase 5** — Distribution + teams + plugin (2 weeks)

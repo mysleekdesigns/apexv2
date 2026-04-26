@@ -42,6 +42,8 @@ const AGENT_TEMPLATES = ["apex-reflector", "apex-curator", "apex-archaeologist"]
 
 const RULE_TEMPLATES = ["10-conventions.md", "20-gotchas.md"];
 
+const COMMAND_TEMPLATES = ["apex-thumbs-up.md", "apex-thumbs-down.md"];
+
 function applyVars(content: string, vars: Record<string, string>): string {
   return content.replace(/\{\{\s*([A-Z_]+)\s*\}\}/g, (_m, key: string) => {
     return Object.prototype.hasOwnProperty.call(vars, key) ? vars[key]! : `{{${key}}}`;
@@ -280,6 +282,7 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
   await writer.ensureDir(paths.skillsDir);
   await writer.ensureDir(paths.agentsDir);
   await writer.ensureDir(paths.hooksDir);
+  await writer.ensureDir(paths.commandsDir);
 
   // CLAUDE.md (managed section). Template at templates/CLAUDE.md.tmpl from
   // the scaffold workstream; falls back to inline stub if not yet shipped.
@@ -327,6 +330,15 @@ export async function runInstall(opts: InstallOptions): Promise<InstallResult> {
       writer.recordSkippedTemplate(dest, `${agent}.md`);
       await writer.writeOwned(dest, fallbackAgentStub(agent));
     }
+  }
+
+  // Slash commands (Phase 2 §2.5 feedback). Templates ship as plain markdown
+  // files; missing templates skip silently rather than producing a stub.
+  for (const cmd of COMMAND_TEMPLATES) {
+    const tpl = await readTemplate(`claude/commands/${cmd}`);
+    if (!tpl) continue;
+    const dest = path.join(paths.commandsDir, cmd);
+    await writer.writeOwned(dest, applyVars(tpl, vars));
   }
 
   // Hooks.

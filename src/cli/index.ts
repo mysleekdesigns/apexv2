@@ -63,6 +63,39 @@ async function registerArchaeologist(program: Command): Promise<void> {
   }
 }
 
+async function registerReflect(program: Command): Promise<void> {
+  try {
+    const { reflectCommand } = (await import("./commands/reflect.js")) as {
+      reflectCommand: () => Command;
+    };
+    program.addCommand(reflectCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerPromote(program: Command): Promise<void> {
+  try {
+    const { promoteCommand } = (await import("./commands/promote.js")) as {
+      promoteCommand: () => Command;
+    };
+    program.addCommand(promoteCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
+async function registerCurate(program: Command): Promise<void> {
+  try {
+    const { curateCommand } = (await import("./commands/curate.js")) as {
+      curateCommand: () => Command;
+    };
+    program.addCommand(curateCommand());
+  } catch {
+    // module missing; skip silently.
+  }
+}
+
 async function main(): Promise<void> {
   const program = new Command();
   program
@@ -78,6 +111,9 @@ async function main(): Promise<void> {
   await registerSearch(program);
   await registerHook(program);
   await registerArchaeologist(program);
+  await registerReflect(program);
+  await registerPromote(program);
+  await registerCurate(program);
 
   await program.parseAsync(process.argv);
 }

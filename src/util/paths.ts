@@ -13,6 +13,7 @@ export interface ProjectPaths {
   skillsDir: string;
   agentsDir: string;
   hooksDir: string;
+  commandsDir: string;
   mcpJson: string;
   apexDir: string;
   installJson: string;
@@ -40,6 +41,7 @@ export function projectPaths(root: string): ProjectPaths {
     skillsDir: path.join(claudeDir, "skills"),
     agentsDir: path.join(claudeDir, "agents"),
     hooksDir: path.join(claudeDir, "hooks"),
+    commandsDir: path.join(claudeDir, "commands"),
     mcpJson: path.join(r, ".mcp.json"),
     apexDir,
     installJson: path.join(apexDir, "install.json"),

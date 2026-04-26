@@ -113,6 +113,37 @@ function isCorrection(prompt: string): boolean {
   return CORRECTION_REGEX.test(prompt.trim());
 }
 
+// ---------- confirmation detection -------------------------------------------
+
+// Conservative list of short leading affirmations; prefer false negatives over
+// false positives — a spurious confirmation row degrades curator confidence
+// calibration more than a missed one. Empty / whitespace-only strings are
+// excluded by the \S requirement implicit in each alternative.
+const CONFIRMATION_REGEX =
+  /^(yes\b|yep\b|yeah\b|exactly\b|perfect\b|that's right\b|that's correct\b|that's it\b|right\b|correct\b|do that\b|go ahead\b|ship it\b|looks good\b|lgtm\b|👍)/i;
+
+function isConfirmation(prompt: string): boolean {
+  const t = prompt.trim();
+  return t.length > 0 && CONFIRMATION_REGEX.test(t);
+}
+
+// ---------- thumbs detection -------------------------------------------------
+
+// Matches /apex-thumbs-up <id> or /apex-thumbs-down <id> where id is a
+// kebab-style alphanumeric token (e.g. "gh-pnpm-not-npm").
+const THUMBS_REGEX =
+  /^\/apex-thumbs-(up|down)\s+([a-z0-9]+(?:-[a-z0-9]+)*)$/i;
+
+function isThumbs(
+  prompt: string,
+): { kind: "thumbs_up" | "thumbs_down"; entry_id: string } | null {
+  const m = THUMBS_REGEX.exec(prompt.trim());
+  if (!m) return null;
+  const polarity = m[1]!.toLowerCase();
+  const kind = polarity === "up" ? "thumbs_up" : "thumbs_down";
+  return { kind, entry_id: m[2]! };
+}
+
 // ---------- per-event handlers ------------------------------------------------
 
 const SessionStartPayload = z
@@ -189,12 +220,37 @@ function handlePromptSubmit(
     attached_files: p.attached_files,
   });
 
-  if (isCorrection(prompt)) {
+  // Priority: thumbs > correction > confirmation > (no row).
+  // Exactly one row is written per prompt.
+  const thumbs = isThumbs(prompt);
+  if (thumbs) {
+    appendCorrection(root, episodeId, {
+      schema_version: 1,
+      ts,
+      turn,
+      kind: thumbs.kind,
+      evidence_ref: `prompts.jsonl#turn=${turn}`,
+      target_entry_id: thumbs.entry_id,
+      user_text: prompt,
+      claude_action_summary: "",
+    });
+  } else if (isCorrection(prompt)) {
     appendCorrection(root, episodeId, {
       schema_version: 1,
       ts,
       turn,
       kind: "correction",
+      evidence_ref: `prompts.jsonl#turn=${turn}`,
+      target_entry_id: null,
+      user_text: prompt,
+      claude_action_summary: "",
+    });
+  } else if (isConfirmation(prompt)) {
+    appendCorrection(root, episodeId, {
+      schema_version: 1,
+      ts,
+      turn,
+      kind: "confirmation",
       evidence_ref: `prompts.jsonl#turn=${turn}`,
       target_entry_id: null,
       user_text: prompt,
@@ -587,4 +643,11 @@ export async function runHookForTest(
   }
 }
 
-export { CORRECTION_REGEX, isCorrection };
+export {
+  CORRECTION_REGEX,
+  isCorrection,
+  CONFIRMATION_REGEX,
+  isConfirmation,
+  THUMBS_REGEX,
+  isThumbs,
+};

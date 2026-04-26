@@ -59,6 +59,12 @@ export async function runUninstall(flags: UninstallFlags): Promise<number> {
       await rmIfExists(path.join(paths.agentsDir, f));
     }
   }
+  // Slash commands.
+  for (const f of await fs.readdir(paths.commandsDir).catch(() => [] as string[])) {
+    if (f.startsWith("apex-") && f.endsWith(".md")) {
+      await rmIfExists(path.join(paths.commandsDir, f));
+    }
+  }
   // Hooks: detect by header token.
   for (const f of await fs.readdir(paths.hooksDir).catch(() => [] as string[])) {
     if (!f.startsWith("on-") || !f.endsWith(".sh")) continue;
