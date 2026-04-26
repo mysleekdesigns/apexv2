@@ -7,9 +7,9 @@ import { projectPaths } from "../../util/paths.js";
 import {
   removeGitignoreManaged,
   removeMarkdownManaged,
-  removeMcpServer,
   removeSettingsHooks,
 } from "../../scaffold/managedSection.js";
+import { unregisterApexMcp } from "../../scaffold/mcpRegistration.js";
 
 export interface UninstallFlags {
   cwd?: string;
@@ -96,25 +96,8 @@ export async function runUninstall(flags: UninstallFlags): Promise<number> {
     }
   }
 
-  // .mcp.json: remove apex entry.
-  if (await fs.pathExists(paths.mcpJson)) {
-    const json = (await fs.readJson(paths.mcpJson).catch(() => null)) as
-      | Record<string, unknown>
-      | null;
-    const cleaned = removeMcpServer(json, "apex");
-    if (
-      cleaned["mcpServers"] === undefined &&
-      Object.keys(cleaned).length === 0
-    ) {
-      await rmIfExists(paths.mcpJson);
-    } else {
-      await fs.writeFile(
-        paths.mcpJson,
-        `${JSON.stringify(cleaned, null, 2)}\n`,
-        "utf8",
-      );
-    }
-  }
+  // .mcp.json: remove apex entry; delete file if no servers remain.
+  await unregisterApexMcp(root);
 
   // CLAUDE.md: strip managed block (or remove if it's apex-only).
   if (await fs.pathExists(paths.claudeMd)) {
